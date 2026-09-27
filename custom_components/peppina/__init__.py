@@ -1,7 +1,7 @@
-"""Filippa: program, start, stop and delayed start for hOn washing machines.
+"""Peppina: program, start, stop and delayed start for hOn washing machines.
 
 The gvigroux/hon integration talks to the appliance but exposes no way to
-stop a washing machine program. Filippa rides on top of its runtime (it does
+stop a washing machine program. Peppina rides on top of its runtime (it does
 not log in to hOn by itself) and adds four controls per appliance that knows
 both the startProgram and stopProgram commands.
 """
@@ -21,7 +21,7 @@ from homeassistant.helpers.typing import ConfigType
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = "filippa"
+DOMAIN = "peppina"
 HON = "hon"
 PLATFORMS = [Platform.SELECT, Platform.BUTTON, Platform.DATETIME]
 START = "startProgram"
@@ -33,7 +33,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     async def _load(_event=None) -> None:
         hass.data[DOMAIN] = discover_washers(hass)
-        _LOGGER.info("Filippa found %d appliance(s)", len(hass.data[DOMAIN]))
+        _LOGGER.info("Peppina found %d appliance(s)", len(hass.data[DOMAIN]))
         for platform in PLATFORMS:
             hass.async_create_task(
                 async_load_platform(hass, platform, DOMAIN, {}, config)

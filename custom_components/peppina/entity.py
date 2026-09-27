@@ -1,4 +1,4 @@
-"""Shared base for Filippa entities."""
+"""Shared base for Peppina entities."""
 from __future__ import annotations
 
 from homeassistant.helpers.entity import Entity
@@ -6,7 +6,7 @@ from homeassistant.helpers.entity import Entity
 from . import DOMAIN, Washer
 
 
-class FilippaEntity(Entity):
+class PeppinaEntity(Entity):
     """Named after the appliance; YAML-loaded, so no device_info link."""
 
     _attr_should_poll = False

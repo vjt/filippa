@@ -4,7 +4,7 @@ from __future__ import annotations
 from homeassistant.components.button import ButtonEntity
 
 from . import DOMAIN
-from .entity import FilippaEntity
+from .entity import PeppinaEntity
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -12,11 +12,11 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         return
     entities = []
     for washer in hass.data[DOMAIN]:
-        entities += [FilippaStart(washer), FilippaStop(washer), FilippaCancelDelay(washer)]
+        entities += [PeppinaStart(washer), PeppinaStop(washer), PeppinaCancelDelay(washer)]
     async_add_entities(entities)
 
 
-class FilippaStart(FilippaEntity, ButtonEntity):
+class PeppinaStart(PeppinaEntity, ButtonEntity):
     _attr_icon = "mdi:play"
 
     def __init__(self, washer) -> None:
@@ -26,7 +26,7 @@ class FilippaStart(FilippaEntity, ButtonEntity):
         await self._washer.start()
 
 
-class FilippaStop(FilippaEntity, ButtonEntity):
+class PeppinaStop(PeppinaEntity, ButtonEntity):
     _attr_icon = "mdi:stop"
 
     def __init__(self, washer) -> None:
@@ -36,7 +36,7 @@ class FilippaStop(FilippaEntity, ButtonEntity):
         await self._washer.stop()
 
 
-class FilippaCancelDelay(FilippaEntity, ButtonEntity):
+class PeppinaCancelDelay(PeppinaEntity, ButtonEntity):
     _attr_icon = "mdi:timer-off-outline"
 
     def __init__(self, washer) -> None:
