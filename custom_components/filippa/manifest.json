@@ -1,0 +1,11 @@
+{
+  "domain": "filippa",
+  "name": "Filippa",
+  "codeowners": ["@vjt"],
+  "dependencies": ["hon"],
+  "documentation": "https://github.com/vjt/filippa",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/vjt/filippa/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
