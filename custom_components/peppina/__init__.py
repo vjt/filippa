@@ -7,6 +7,7 @@ both the startProgram and stopProgram commands.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import Callable
@@ -34,10 +35,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async def _load(_event=None) -> None:
         hass.data[DOMAIN] = discover_washers(hass)
         _LOGGER.info("Peppina found %d appliance(s)", len(hass.data[DOMAIN]))
-        for platform in PLATFORMS:
-            hass.async_create_task(
-                async_load_platform(hass, platform, DOMAIN, {}, config)
-            )
+        await asyncio.gather(
+            *(async_load_platform(hass, p, DOMAIN, {}, config) for p in PLATFORMS)
+        )
+        from .dashboard import async_setup_dashboard
+
+        await async_setup_dashboard(hass, hass.data[DOMAIN])
 
     if hass.state is CoreState.running:
         await _load()
