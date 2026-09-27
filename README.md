@@ -9,7 +9,7 @@ every hon appliance that supports both `startProgram` and `stopProgram`:
 
 | Entity | What it does |
 |---|---|
-| `select.<name>_programma` | pick the program to run (defaults to the one hon has selected) |
+| `select.<name>_programma` | pick the program to run (remembered across restarts; defaults to the first one) |
 | `button.<name>_avvia` | start the selected program now |
 | `button.<name>_stop` | stop the running program (and drop any pending delayed start) |
 | `datetime.<name>_avvio_ritardato` | start the selected program at that instant |

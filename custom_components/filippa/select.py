@@ -26,7 +26,7 @@ class FilippaProgram(FilippaEntity, SelectEntity, RestoreEntity):
 
     @property
     def current_option(self) -> str | None:
-        return self._washer.program or self._washer.device_program
+        return self._washer.program
 
     async def async_select_option(self, option: str) -> None:
         self._washer.program = option
@@ -35,5 +35,10 @@ class FilippaProgram(FilippaEntity, SelectEntity, RestoreEntity):
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         last = await self.async_get_last_state()
-        if last is not None and last.state in self._washer.programs:
+        programs = self._washer.programs
+        if last is not None and last.state in programs:
             self._washer.program = last.state
+        elif programs:
+            # hon's own current program is whichever it parsed last, not the
+            # one the appliance runs: fall back to the first, not to that.
+            self._washer.program = programs[0]

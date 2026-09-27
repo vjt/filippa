@@ -89,17 +89,9 @@ class Washer:
             return []
         return list(device.commands[START].get_programs().keys())
 
-    @property
-    def device_program(self) -> str | None:
-        """The program hon currently has selected, used until the user picks one."""
-        device = self.hon_device(required=False)
-        if device is None or START not in device.commands:
-            return None
-        return getattr(device.commands[START], "_program", None) or None
-
     async def start(self) -> None:
         device = self.hon_device()
-        program = self.program or self.device_program
+        program = self.program
         if program not in self.programs:
             raise HomeAssistantError(f"{self.name}: unknown program {program!r}")
         if not await device.start_command(program).send():
