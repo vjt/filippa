@@ -67,6 +67,11 @@ the states live, and on every start it catches up on the recorder since the
 last state it took in: the first time, up to 30 days back, as far as the recorder
 goes (10 days by default), so the card knows your habits from day one.
 
+### What you can build on it
+
+A push when she is done, only to whoever is home: the YAML is in
+[docs/automations.md](docs/automations.md).
+
 ## Install
 
 1. Set up the core Home Connect integration first, with the dishwasher in it.
