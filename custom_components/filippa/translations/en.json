@@ -1,0 +1,17 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Dishwasher",
+        "description": "The Home Connect dishwasher to give Filippa's card to.",
+        "data": {
+          "device_id": "Dishwasher"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This dishwasher is already configured.",
+      "no_dishwashers": "No Home Connect dishwasher: set up the Home Connect integration first."
+    }
+  }
+}

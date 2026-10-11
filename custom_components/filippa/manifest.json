@@ -1,0 +1,21 @@
+{
+  "domain": "filippa",
+  "name": "Filippa",
+  "after_dependencies": [
+    "lovelace",
+    "recorder"
+  ],
+  "codeowners": [
+    "@vjt"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "frontend",
+    "home_connect"
+  ],
+  "documentation": "https://github.com/vjt/filippa",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/vjt/filippa/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
