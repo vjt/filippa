@@ -49,6 +49,12 @@ switch; Avvia calls `home_connect.set_program_and_options` with
 `affects_to: active_program`, the program and the options as the pills show
 them. Filippa never sends a delayed start.
 
+<p align="center">
+  <img src="docs/images/dashboard.jpg" alt="The Filippa dashboard: the dishwasher drawn in SVG mid-wash, 1:16 left, Auto 45-65° selected among the most used programs" width="300">
+</p>
+
+<p align="center"><a href="docs/images/washing.mp4">See it wash (video, 6 s)</a></p>
+
 ### One sensor
 
 `sensor.<dishwasher>_cicli`, on the home_connect device: how many cycles
