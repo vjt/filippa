@@ -1,0 +1,17 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Lavastoviglie",
+        "description": "La lavastoviglie Home Connect a cui dare la card di Filippa.",
+        "data": {
+          "device_id": "Lavastoviglie"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Questa lavastoviglie è già configurata.",
+      "no_dishwashers": "Nessuna lavastoviglie Home Connect: configura prima l'integrazione Home Connect."
+    }
+  }
+}
