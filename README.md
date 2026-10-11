@@ -53,7 +53,9 @@ them. Filippa never sends a delayed start.
   <img src="docs/images/dashboard.jpg" alt="The Filippa dashboard: the dishwasher drawn in SVG mid-wash, 1:16 left, Auto 45-65° selected among the most used programs" width="300">
 </p>
 
-<p align="center"><a href="docs/images/washing.mp4">See it wash (video, 6 s)</a></p>
+<p align="center">
+  <img src="docs/images/washing.gif" alt="Filippa washing: spray arms turning, water fanning out, 1:16 left" width="300">
+</p>
 
 ### One sensor
 
