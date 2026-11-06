@@ -84,7 +84,11 @@ function runningStates(over = {}) {
 // Closed at the end: a running cycle keeps the card's clock ticking.
 const windows = [];
 
-function mount(states = readyStates(), config = {}) {
+// What hass says of the user's language: Italian unless a test says otherwise.
+const ITALIAN = { locale: { language: "it", time_format: "language" } };
+const ENGLISH = { locale: { language: "en", time_format: "language" } };
+
+function mount(states = readyStates(), config = {}, i18n = ITALIAN) {
   const dom = new JSDOM("<!doctype html><body></body>", { runScripts: "outside-only", url: "https://ha.local/filippa" });
   const { window } = dom;
   windows.push(window);
@@ -94,16 +98,19 @@ function mount(states = readyStates(), config = {}) {
   card.setConfig({ name: "Filippa", device_id: "dev123", entities: ENTITIES, switches: SWITCHES, ...config });
   window.document.body.appendChild(card);
   let current = states;
-  const hass = () => ({ states: { ...current }, callService: (d, sv, data) => { calls.push([d, sv, data]); return Promise.resolve(); } });
+  let lang = i18n;
+  const hass = () => ({ ...lang, states: { ...current }, callService: (d, sv, data) => { calls.push([d, sv, data]); return Promise.resolve(); } });
   card.hass = hass();
   const root = card.shadowRoot;
   const $ = (q) => root.querySelector(q);
   const $$ = (q) => [...root.querySelectorAll(q)];
   const set = (next) => { current = next; card.hass = hass(); };
+  // The user switches language in their profile.
+  const speak = (next) => { lang = next; card.hass = hass(); };
   // jsdom objects are cross-realm: compare calls through JSON.
   const sent = () => JSON.parse(JSON.stringify(calls));
   const tiles = (box = ".tiles.top") => $$(`${box} .tile`).map((t) => t.querySelector(".tn").textContent);
-  return { window, card, root, $, $$, calls, sent, set, tiles };
+  return { window, card, root, $, $$, calls, sent, set, speak, tiles };
 }
 
 test("ready: the most used programs first, with their duration and count", () => {
@@ -288,11 +295,101 @@ test("unknown programs of other models get a readable name, under Altri", () => 
 
 test("a failed call stops the waiting", async () => {
   const t = mount();
-  t.card.hass = { states: readyStates(), callService: () => Promise.reject(new Error("no")) };
+  t.card.hass = { ...ITALIAN, states: readyStates(), callService: () => Promise.reject(new Error("no")) };
   t.$(".start").click();
   assert.equal(t.$(".start").textContent, "Avvio…");
   await new Promise((r) => setTimeout(r, 0));
   assert.equal(t.$(".start").textContent, "Avvia");
+});
+
+test("in English: the programs, their groups and the options", () => {
+  const t = mount(readyStates(), {}, ENGLISH);
+  assert.equal(t.$(".tlabel").textContent, "Most used");
+  assert.deepEqual(t.tiles(), ["Auto 45–65°", "Eco 50°", "Quick 45°", "Intensive 70°"]);
+  assert.match(t.$(".pdesc").textContent, /^Feels how dirty the dishes are/);
+  assert.equal(t.$(".pnote").textContent,
+    "Last wash: 2 h 32 min (the dishwasher reckoned 2 h 35 min), with VarioSpeed");
+  assert.equal(t.$(".more").textContent, "All programs (12)");
+  t.$(".more").click();
+  assert.deepEqual(t.$$(".tiles.all .group").map((g) => g.textContent),
+    ["Everyday", "Quick", "Heavy soiling", "Delicate", "Special"]);
+  assert.equal(t.$(".more").textContent, "Fewer programs");
+  assert.equal(t.$(".optbox .label").textContent, "Options");
+  assert.deepEqual(t.$$(".pill").map((p) => p.textContent),
+    ["Intensive zone", "VarioSpeed", "Half load", "Extra dry"]);
+  assert.equal(t.$$(".pill")[2].title, "For a few plates: less water and energy.");
+});
+
+test("in English: Filippa says how she is", () => {
+  const said = (states) => {
+    const t = mount(states, {}, ENGLISH);
+    return [t.$(".big").textContent, t.$(".small").textContent];
+  };
+  assert.deepEqual(said(readyStates()), ["Ready", "Remote start on"]);
+  assert.deepEqual(said(readyStates({ "sensor.filippa_operation_state": s("inactive") })),
+    ["Filippa is napping", "Switched off"]);
+  assert.deepEqual(said(readyStates({ "sensor.filippa_operation_state": s("unavailable"),
+    "binary_sensor.filippa_connectivity": s("off") })), ["Out of reach", "Home Connect can't hear her"]);
+  assert.deepEqual(said(runningStates({ "sensor.filippa_operation_state": s("finished"),
+    "sensor.filippa_door": s("closed") })), ["All done", "Waiting to be emptied"]);
+  assert.deepEqual(said(runningStates({ "sensor.filippa_operation_state": s("actionrequired") })),
+    ["Needs a hand", "Check the dishwasher's display"]);
+  const [big, small] = said(runningStates());
+  assert.equal(big, "Washing");
+  assert.match(small, /^Auto 45–65° · finishes at \d\d:\d\d [AP]M$/);
+});
+
+test("in English: Start and Stop, and why Start is off", () => {
+  const t = mount(runningStates(), {}, ENGLISH);
+  assert.equal(t.$(".stop").textContent, "Stop");
+  t.$(".stop").click();
+  assert.equal(t.$(".stop").textContent, "Sure? Stop");
+  const why = (over) => mount(readyStates(over), {}, ENGLISH).$(".why").textContent;
+  assert.equal(why({ "binary_sensor.filippa_remote_start": s("off") }), "Press Remote Start on the dishwasher");
+  assert.equal(why({ "sensor.filippa_door": s("open") }), "Close the door");
+  assert.equal(why({ "sensor.filippa_operation_state": s("inactive") }), "Switch the dishwasher on");
+  assert.equal(why({ "select.filippa_selected_program": s("unknown", { options: PROGRAMS }) }), "Pick a program");
+  const ready = mount(readyStates({ "sensor.filippa_salt_nearly_empty": s("present"),
+    "sensor.filippa_rinse_aid_nearly_empty": s("present") }), {}, ENGLISH);
+  assert.deepEqual(ready.$$(".chip.warn").map((c) => c.textContent), ["Almost out of salt", "Almost out of rinse aid"]);
+  assert.equal(ready.$(".start").textContent, "Start");
+  ready.$(".start").click();
+  assert.equal(ready.$(".start").textContent, "Starting…");
+  const quick = mount(readyStates({ "select.filippa_selected_program": s(P("quick_45"), { options: PROGRAMS }) }), {}, ENGLISH);
+  assert.equal(quick.$(".pnote").textContent, "Duration not known yet: she learns it from the first wash");
+});
+
+test("in English: times follow the profile, 12 or 24 hours", () => {
+  const small = (time_format) =>
+    mount(runningStates(), {}, { locale: { language: "en", time_format } }).$(".small").textContent;
+  assert.match(small("12"), /finishes at \d\d:\d\d [AP]M$/);
+  assert.match(small("24"), /finishes at \d\d:\d\d$/);
+  // The machine's display keeps its own clock.
+  assert.equal(mount(runningStates(), {}, { locale: { language: "en", time_format: "12" } }).$(".lcd").textContent, "1:24");
+});
+
+test("Italian for any Italian, English for any other language, or none", () => {
+  const big = (i18n) => mount(readyStates(), {}, i18n).$(".big").textContent;
+  assert.equal(big({ locale: { language: "it-CH" } }), "Pronta");
+  assert.equal(big({ language: "it" }), "Pronta");  // hass.language alone, no locale
+  assert.equal(big({ locale: { language: "en-GB" } }), "Ready");
+  assert.equal(big({ locale: { language: "fr" } }), "Ready");
+  assert.equal(big({ locale: { language: "ita" } }), "Ready");
+  assert.equal(big({}), "Ready");
+});
+
+test("a change of language in the profile rebuilds the card in it", () => {
+  const t = mount();
+  assert.equal(t.$(".start").textContent, "Avvia");
+  t.speak(ENGLISH);
+  assert.equal(t.$(".start").textContent, "Start");
+  assert.equal(t.$(".optbox .label").textContent, "Options");
+  assert.equal(t.$(".big").textContent, "Ready");
+  assert.deepEqual(t.tiles(), ["Auto 45–65°", "Eco 50°", "Quick 45°", "Intensive 70°"]);
+  t.$('.tile[data-key="dishcare_dishwasher_program_eco_50"]').click();
+  assert.equal(t.sent().pop()[2].option, P("eco_50"));
+  t.speak(ITALIAN);
+  assert.equal(t.$(".big").textContent, "Pronta");
 });
 
 await new Promise((r) => setTimeout(r, 20));
