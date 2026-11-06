@@ -40,8 +40,9 @@ only that: no requirements, `dependencies: [frontend, home_connect]`.
 - `dashboard.py`: Peppina's approach, a storage-mode Lovelace panel rewritten
   on every load. Roles and option switches follow the registry; roles and
   card options added by hand survive.
-- `www/filippa-card.js`: the card. All its texts sit in one table
-  (`STRINGS`), for when it learns other languages.
+- `www/filippa-card.js`: the card. All its texts sit in one table per
+  language (`STRINGS.it`, `STRINGS.en`), picked from the user's profile:
+  Italian for Italian, English for any other.
 
 ## Verified
 
@@ -56,6 +57,10 @@ only that: no requirements, `dependencies: [frontend, home_connect]`.
   - the dashboard card, and what the user added to it, survives a rewrite.
 - 20 tests of the card in jsdom: tiles, pills, the service calls it makes
   (and that it never sends a delay), the reasons Avvia is off, the states.
+- 0.2.0, English: 6 more card tests (the texts in English, 12 or 24 hours,
+  the fallback for other languages, a change of language in the profile)
+  and 3 more in Home Assistant 2026.10.4 (the sensor's name in English,
+  Italian and a language Filippa lacks).
 - The SVG drawn with rsvg-convert, still frames only.
 - The service, entity keys and option fields read from the Home Assistant
   2026.9.4 sources and aiohomeconnect 0.39.1.
