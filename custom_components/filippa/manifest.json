@@ -14,7 +14,8 @@
   "config_flow": true,
   "dependencies": [
     "frontend",
-    "home_connect"
+    "home_connect",
+    "http"
   ],
   "documentation": "https://github.com/vjt/filippa",
   "iot_class": "calculated",
