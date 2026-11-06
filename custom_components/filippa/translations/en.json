@@ -13,5 +13,12 @@
       "already_configured": "This dishwasher is already configured.",
       "no_dishwashers": "No Home Connect dishwasher: set up the Home Connect integration first."
     }
+  },
+  "entity": {
+    "sensor": {
+      "cycles": {
+        "name": "Cycles"
+      }
+    }
   }
 }
