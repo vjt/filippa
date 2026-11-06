@@ -1,7 +1,7 @@
 # Filippa
 
 **A Home Assistant card for a Bosch (Home Connect) dishwasher: pick a
-program in plain Italian, toggle its options, start it, stop it, and watch it
+program by a plain name, toggle its options, start it, stop it, and watch it
 wash.**
 
 [![HACS custom repository](https://img.shields.io/badge/HACS-custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
@@ -32,20 +32,23 @@ A **Filippa** sidebar dashboard, one full-page card per dishwasher:
   fans out of them, steam rises, and the remaining time shows on its display
   and on the floor, like Bosch's TimeLight; when it is done the dishes
   sparkle; the door drops open when you open it;
-- the programs under Italian names with a line on what each is for, the
+- the programs under plain names with a line on what each is for, the
   most used first (all of them, grouped, one tap away), each with how long
   it took last time and how often it ran;
-- the options the selected program allows, as pills (Zona intensiva,
-  VarioSpeed, Mezzo carico, Igiene+, Extra asciutto, Silenzio);
-- **Avvia**, and **Ferma** (it asks for a second tap: a cycle stopped by
+- the options the selected program allows, as pills (Intensive zone,
+  VarioSpeed, Half load, Hygiene+, Extra dry, Silence);
+- **Start**, and **Stop** (it asks for a second tap: a cycle stopped by
   mistake leaves wet, dirty dishes);
-- why Avvia is off when it is ("Premi Avvio remoto sulla lavastoviglie",
-  "Chiudi lo sportello", ...), and warnings for salt and rinse aid running
+- why Start is off when it is ("Press Remote Start on the dishwasher",
+  "Close the door", ...), and warnings for salt and rinse aid running
   low.
+
+The card speaks the language of your Home Assistant profile: Italian, or
+English for any other.
 
 Picking a program selects it on the machine (`select.*_selected_program`),
 so the machine shows it and offers its options; a pill toggles the option
-switch; Avvia calls `home_connect.set_program_and_options` with
+switch; Start calls `home_connect.set_program_and_options` with
 `affects_to: active_program`, the program and the options as the pills show
 them. Filippa never sends a delayed start.
 
@@ -59,7 +62,8 @@ them. Filippa never sends a delayed start.
 
 ### One sensor
 
-`sensor.<dishwasher>_cicli`, on the home_connect device: how many cycles
+`sensor.<dishwasher>_cicli`, on the home_connect device (named Cycles, or
+Cicli in Italian; the id is the same in every language): how many cycles
 Filippa has seen, with these attributes:
 
 - `programs`: per program key, `usage` (cycles started), `estimate` (what the

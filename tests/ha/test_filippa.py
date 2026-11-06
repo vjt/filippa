@@ -3,6 +3,7 @@ from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from homeassistant import config_entries
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -43,6 +44,19 @@ async def test_the_cycles_sensor_joins_the_home_connect_device(hass, dishwasher,
     assert entity.device_id == dishwasher
     assert hass.states.get(CYCLES).state == "0"
     assert dr.async_get(hass).async_get(dishwasher).identifiers == {("home_connect", HA_ID)}
+
+
+@pytest.mark.parametrize(
+    ("language", "name"), [("en", "Filippa Cycles"), ("it", "Filippa Cicli"), ("de", "Filippa Cycles")]
+)
+async def test_the_cycles_sensor_speaks_home_assistant_language(
+    hass, dishwasher, no_dashboard, language, name
+):
+    """Its name follows the language (English for one Filippa lacks), its id
+    stays put."""
+    hass.config.language = language
+    await setup_entry(hass, dishwasher)
+    assert hass.states.get(CYCLES).attributes["friendly_name"] == name
 
 
 async def test_cycles_are_learned_live(hass, dishwasher, no_dashboard, freezer):

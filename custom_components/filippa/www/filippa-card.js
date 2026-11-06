@@ -10,163 +10,305 @@
 //   switches: {dishcare_dishwasher_option_half_load: switch.filippa_half_load, ...}
 // Missing roles are simply not shown.
 
-// Every text the card shows, in one table: the card speaks Italian only,
-// until it learns other languages.
+// Every text the card shows, one table per language: Italian for an Italian
+// frontend, English for any other.
 const STRINGS = {
-  programs: {
-    dishcare_dishwasher_program_auto_1: {
-      name: "Auto 35–45°",
-      description: "Sente quanto sono sporche le stoviglie e regola da sé acqua, temperatura e durata. Per lo sporco leggero.",
+  it: {
+    description: "La lavastoviglie.",
+    programs: {
+      dishcare_dishwasher_program_auto_1: {
+        name: "Auto 35–45°",
+        description: "Sente quanto sono sporche le stoviglie e regola da sé acqua, temperatura e durata. Per lo sporco leggero.",
+      },
+      dishcare_dishwasher_program_auto_2: {
+        name: "Auto 45–65°",
+        description: "Sente quanto sono sporche le stoviglie e regola da sé acqua, temperatura e durata. Va bene quasi sempre.",
+      },
+      dishcare_dishwasher_program_auto_3: {
+        name: "Auto 65–75°",
+        description: "Sente quanto sono sporche le stoviglie e regola da sé acqua, temperatura e durata. Per lo sporco forte.",
+      },
+      dishcare_dishwasher_program_eco_50: {
+        name: "Eco 50°",
+        description: "Il più parsimonioso in acqua ed energia, per lo sporco di tutti i giorni. Ci mette tanto: è così che risparmia.",
+      },
+      dishcare_dishwasher_program_mixed_load: {
+        name: "Carico misto",
+        description: "Pentole e piatti sotto, bicchieri sopra: forte nel cestello di sotto, delicato in quello di sopra.",
+      },
+      dishcare_dishwasher_program_night_wash: {
+        name: "Notturno",
+        description: "Il più silenzioso, per lavare mentre si dorme. Più lungo degli altri.",
+      },
+      dishcare_dishwasher_program_quick_45: {
+        name: "Rapido 45°",
+        description: "Per stoviglie appena usate e poco sporche. Il più breve.",
+      },
+      dishcare_dishwasher_program_kurz_60: {
+        name: "Rapido 60°",
+        description: "Breve ma più caldo, per lo sporco leggero o normale.",
+      },
+      dishcare_dishwasher_program_super_60: {
+        name: "Super 60°",
+        description: "Lo sporco di tutti i giorni in meno tempo dell'Eco, consumando un po' di più.",
+      },
+      dishcare_dishwasher_program_intensiv_70: {
+        name: "Intensivo 70°",
+        description: "Pentole, teglie e sporco incrostato o bruciato.",
+      },
+      dishcare_dishwasher_program_intensiv_power: {
+        name: "Intensivo Power",
+        description: "Il più energico, per lo sporco più ostinato.",
+      },
+      dishcare_dishwasher_program_glas_40: {
+        name: "Bicchieri 40°",
+        description: "Delicato, per bicchieri e stoviglie fragili.",
+      },
+      dishcare_dishwasher_program_pre_rinse: {
+        name: "Prelavaggio",
+        description: "Solo un risciacquo freddo: tiene morbido lo sporco finché la lavastoviglie non è piena.",
+      },
+      dishcare_dishwasher_program_machine_care: {
+        name: "Cura macchina",
+        description: "Pulisce la lavastoviglie stessa: va fatto a vuoto, con il prodotto per la cura.",
+      },
     },
-    dishcare_dishwasher_program_auto_2: {
-      name: "Auto 45–65°",
-      description: "Sente quanto sono sporche le stoviglie e regola da sé acqua, temperatura e durata. Va bene quasi sempre.",
+    // Group names, by the keys in GROUPS.
+    groups: {
+      everyday: "Tutti i giorni", quick: "Veloci", heavy: "Sporco forte", delicate: "Delicati",
+      special: "Speciali",
     },
-    dishcare_dishwasher_program_auto_3: {
-      name: "Auto 65–75°",
-      description: "Sente quanto sono sporche le stoviglie e regola da sé acqua, temperatura e durata. Per lo sporco forte.",
+    switches: {
+      dishcare_dishwasher_option_intensiv_zone: {
+        name: "Zona intensiva", description: "Più forza nel cestello di sotto, per le pentole.",
+      },
+      dishcare_dishwasher_option_vario_speed_plus: {
+        name: "VarioSpeed", description: "Finisce molto prima, consumando un po' di più.",
+      },
+      dishcare_dishwasher_option_half_load: {
+        name: "Mezzo carico", description: "Per pochi piatti: meno acqua ed energia.",
+      },
+      dishcare_dishwasher_option_hygiene_plus: {
+        name: "Igiene+", description: "Risciacquo finale più caldo, per taglieri e biberon.",
+      },
+      dishcare_dishwasher_option_extra_dry: {
+        name: "Extra asciutto", description: "Più calore alla fine: esce più asciutto, plastica compresa.",
+      },
+      dishcare_dishwasher_option_silence_on_demand: {
+        name: "Silenzio", description: "Più piano per un po', quando serve silenzio.",
+      },
+      dishcare_dishwasher_option_brilliance_dry: {
+        name: "Brillantezza", description: "Asciugatura che lascia i bicchieri più brillanti.",
+      },
+      dishcare_dishwasher_option_eco_dry: {
+        name: "Asciugatura Eco", description: "Apre lo sportello alla fine, per asciugare consumando meno.",
+      },
+      dishcare_dishwasher_option_zeolite_dry: {
+        name: "Zeolite", description: "Asciugatura con la zeolite.",
+      },
     },
-    dishcare_dishwasher_program_eco_50: {
-      name: "Eco 50°",
-      description: "Il più parsimonioso in acqua ed energia, per lo sporco di tutti i giorni. Ci mette tanto: è così che risparmia.",
+    others: "Altri",
+    program: "Programma",
+    mostUsed: "Più usati",
+    firstChoices: "Programmi",
+    allPrograms: (n) => `Tutti i programmi (${n})`,
+    fewerPrograms: "Meno programmi",
+    options: "Opzioni",
+    start: "Avvia",
+    starting: "Avvio…",
+    stop: "Ferma",
+    stopSure: "Sicuro? Ferma",
+    sleeps: (name) => `${name} dorme`,
+    off: "Spenta",
+    unreachable: "Non raggiungibile",
+    unreachableNote: "Home Connect non la sente",
+    ready: "Pronta",
+    remoteOn: "Avvio remoto attivo",
+    states: {
+      delayedstart: "Avvio programmato",
+      run: "Lava",
+      pause: "In pausa",
+      actionrequired: "Serve una mano",
+      finished: "Finita",
+      error: "Errore",
+      aborting: "Si ferma…",
     },
-    dishcare_dishwasher_program_mixed_load: {
-      name: "Carico misto",
-      description: "Pentole e piatti sotto, bicchieri sopra: forte nel cestello di sotto, delicato in quello di sopra.",
+    checkDisplay: "Guarda il display della lavastoviglie",
+    doorOpen: "Sportello aperto",
+    toEmpty: "Da svuotare",
+    ends: (time) => `finisce alle ${time}`,
+    salt: "Sale quasi finito",
+    rinseAid: "Brillantante quasi finito",
+    disconnected: "Non connessa",
+    // Why Avvia is off, the first that applies.
+    why: {
+      unreachable: "La lavastoviglie non è raggiungibile",
+      off: "Accendi la lavastoviglie",
+      door: "Chiudi lo sportello",
+      remote: "Premi Avvio remoto sulla lavastoviglie",
+      program: "Scegli un programma",
     },
-    dishcare_dishwasher_program_night_wash: {
-      name: "Notturno",
-      description: "Il più silenzioso, per lavare mentre si dorme. Più lungo degli altri.",
+    // How long the program took last time, and what the machine expected.
+    durationNote: ({ actual, estimate }, options) => {
+      const said = estimate && estimate !== actual
+        ? ` (la lavastoviglie ne stimava ${duration(estimate)})` : "";
+      const withs = options.length ? `, con ${options.join(" e ")}` : "";
+      return `Ultimo lavaggio: ${duration(actual)}${said}${withs}`;
     },
-    dishcare_dishwasher_program_quick_45: {
-      name: "Rapido 45°",
-      description: "Per stoviglie appena usate e poco sporche. Il più breve.",
-    },
-    dishcare_dishwasher_program_kurz_60: {
-      name: "Rapido 60°",
-      description: "Breve ma più caldo, per lo sporco leggero o normale.",
-    },
-    dishcare_dishwasher_program_super_60: {
-      name: "Super 60°",
-      description: "Lo sporco di tutti i giorni in meno tempo dell'Eco, consumando un po' di più.",
-    },
-    dishcare_dishwasher_program_intensiv_70: {
-      name: "Intensivo 70°",
-      description: "Pentole, teglie e sporco incrostato o bruciato.",
-    },
-    dishcare_dishwasher_program_intensiv_power: {
-      name: "Intensivo Power",
-      description: "Il più energico, per lo sporco più ostinato.",
-    },
-    dishcare_dishwasher_program_glas_40: {
-      name: "Bicchieri 40°",
-      description: "Delicato, per bicchieri e stoviglie fragili.",
-    },
-    dishcare_dishwasher_program_pre_rinse: {
-      name: "Prelavaggio",
-      description: "Solo un risciacquo freddo: tiene morbido lo sporco finché la lavastoviglie non è piena.",
-    },
-    dishcare_dishwasher_program_machine_care: {
-      name: "Cura macchina",
-      description: "Pulisce la lavastoviglie stessa: va fatto a vuoto, con il prodotto per la cura.",
-    },
+    noDuration: "Durata non ancora nota: la impara dal primo lavaggio",
   },
-  // Groups in the order the card lists them; programs not listed go in "others".
-  groups: [
-    ["Tutti i giorni", ["auto_2", "auto_1", "auto_3", "eco_50", "mixed_load", "night_wash"]],
-    ["Veloci", ["quick_45", "kurz_60", "super_60"]],
-    ["Sporco forte", ["intensiv_70", "intensiv_power"]],
-    ["Delicati", ["glas_40"]],
-    ["Speciali", ["pre_rinse", "machine_care"]],
-  ],
-  switches: {
-    dishcare_dishwasher_option_intensiv_zone: {
-      name: "Zona intensiva", description: "Più forza nel cestello di sotto, per le pentole.",
+  en: {
+    description: "The dishwasher.",
+    programs: {
+      dishcare_dishwasher_program_auto_1: {
+        name: "Auto 35–45°",
+        description: "Feels how dirty the dishes are and sets water, temperature and time by itself. For light soiling.",
+      },
+      dishcare_dishwasher_program_auto_2: {
+        name: "Auto 45–65°",
+        description: "Feels how dirty the dishes are and sets water, temperature and time by itself. Right nearly every time.",
+      },
+      dishcare_dishwasher_program_auto_3: {
+        name: "Auto 65–75°",
+        description: "Feels how dirty the dishes are and sets water, temperature and time by itself. For heavy soiling.",
+      },
+      dishcare_dishwasher_program_eco_50: {
+        name: "Eco 50°",
+        description: "The thriftiest with water and energy, for everyday dirt. It takes its time: that is how it saves.",
+      },
+      dishcare_dishwasher_program_mixed_load: {
+        name: "Mixed load",
+        description: "Pots and plates below, glasses above: strong in the bottom basket, gentle in the top one.",
+      },
+      dishcare_dishwasher_program_night_wash: {
+        name: "Night",
+        description: "The quietest, to wash while the house sleeps. Longer than the others.",
+      },
+      dishcare_dishwasher_program_quick_45: {
+        name: "Quick 45°",
+        description: "For dishes just used and barely dirty. The shortest.",
+      },
+      dishcare_dishwasher_program_kurz_60: {
+        name: "Quick 60°",
+        description: "Short but hotter, for light or normal soiling.",
+      },
+      dishcare_dishwasher_program_super_60: {
+        name: "Super 60°",
+        description: "Everyday dirt in less time than Eco, using a little more.",
+      },
+      dishcare_dishwasher_program_intensiv_70: {
+        name: "Intensive 70°",
+        description: "Pots, baking trays and baked-on or burnt dirt.",
+      },
+      dishcare_dishwasher_program_intensiv_power: {
+        name: "Intensive Power",
+        description: "The most vigorous, for the most stubborn dirt.",
+      },
+      dishcare_dishwasher_program_glas_40: {
+        name: "Glass 40°",
+        description: "Gentle, for glasses and fragile dishes.",
+      },
+      dishcare_dishwasher_program_pre_rinse: {
+        name: "Pre-rinse",
+        description: "Just a cold rinse: keeps the dirt soft until the dishwasher is full.",
+      },
+      dishcare_dishwasher_program_machine_care: {
+        name: "Machine care",
+        description: "Cleans the dishwasher itself: run it empty, with the care product.",
+      },
     },
-    dishcare_dishwasher_option_vario_speed_plus: {
-      name: "VarioSpeed", description: "Finisce molto prima, consumando un po' di più.",
+    groups: {
+      everyday: "Everyday", quick: "Quick", heavy: "Heavy soiling", delicate: "Delicate",
+      special: "Special",
     },
-    dishcare_dishwasher_option_half_load: {
-      name: "Mezzo carico", description: "Per pochi piatti: meno acqua ed energia.",
+    switches: {
+      dishcare_dishwasher_option_intensiv_zone: {
+        name: "Intensive zone", description: "More power in the bottom basket, for the pots.",
+      },
+      dishcare_dishwasher_option_vario_speed_plus: {
+        name: "VarioSpeed", description: "Finishes much sooner, using a little more.",
+      },
+      dishcare_dishwasher_option_half_load: {
+        name: "Half load", description: "For a few plates: less water and energy.",
+      },
+      dishcare_dishwasher_option_hygiene_plus: {
+        name: "Hygiene+", description: "A hotter final rinse, for chopping boards and baby bottles.",
+      },
+      dishcare_dishwasher_option_extra_dry: {
+        name: "Extra dry", description: "More heat at the end: comes out drier, plastic included.",
+      },
+      dishcare_dishwasher_option_silence_on_demand: {
+        name: "Silence", description: "Quieter for a while, when you need some peace.",
+      },
+      dishcare_dishwasher_option_brilliance_dry: {
+        name: "Brilliance", description: "A drying that leaves the glasses shinier.",
+      },
+      dishcare_dishwasher_option_eco_dry: {
+        name: "Eco dry", description: "Opens the door at the end, to dry using less.",
+      },
+      dishcare_dishwasher_option_zeolite_dry: {
+        name: "Zeolite", description: "Drying with zeolite.",
+      },
     },
-    dishcare_dishwasher_option_hygiene_plus: {
-      name: "Igiene+", description: "Risciacquo finale più caldo, per taglieri e biberon.",
+    others: "Others",
+    program: "Program",
+    mostUsed: "Most used",
+    firstChoices: "Programs",
+    allPrograms: (n) => `All programs (${n})`,
+    fewerPrograms: "Fewer programs",
+    options: "Options",
+    start: "Start",
+    starting: "Starting…",
+    stop: "Stop",
+    stopSure: "Sure? Stop",
+    sleeps: (name) => `${name} is napping`,
+    off: "Switched off",
+    unreachable: "Out of reach",
+    unreachableNote: "Home Connect can't hear her",
+    ready: "Ready",
+    remoteOn: "Remote start on",
+    states: {
+      delayedstart: "Start scheduled",
+      run: "Washing",
+      pause: "Paused",
+      actionrequired: "Needs a hand",
+      finished: "All done",
+      error: "Error",
+      aborting: "Stopping…",
     },
-    dishcare_dishwasher_option_extra_dry: {
-      name: "Extra asciutto", description: "Più calore alla fine: esce più asciutto, plastica compresa.",
+    checkDisplay: "Check the dishwasher's display",
+    doorOpen: "Door open",
+    toEmpty: "Waiting to be emptied",
+    ends: (time) => `finishes at ${time}`,
+    salt: "Almost out of salt",
+    rinseAid: "Almost out of rinse aid",
+    disconnected: "Not connected",
+    why: {
+      unreachable: "The dishwasher can't be reached",
+      off: "Switch the dishwasher on",
+      door: "Close the door",
+      remote: "Press Remote Start on the dishwasher",
+      program: "Pick a program",
     },
-    dishcare_dishwasher_option_silence_on_demand: {
-      name: "Silenzio", description: "Più piano per un po', quando serve silenzio.",
+    durationNote: ({ actual, estimate }, options) => {
+      const said = estimate && estimate !== actual
+        ? ` (the dishwasher reckoned ${duration(estimate)})` : "";
+      const withs = options.length ? `, with ${options.join(" and ")}` : "";
+      return `Last wash: ${duration(actual)}${said}${withs}`;
     },
-    dishcare_dishwasher_option_brilliance_dry: {
-      name: "Brillantezza", description: "Asciugatura che lascia i bicchieri più brillanti.",
-    },
-    dishcare_dishwasher_option_eco_dry: {
-      name: "Asciugatura Eco", description: "Apre lo sportello alla fine, per asciugare consumando meno.",
-    },
-    dishcare_dishwasher_option_zeolite_dry: {
-      name: "Zeolite", description: "Asciugatura con la zeolite.",
-    },
+    noDuration: "Duration not known yet: she learns it from the first wash",
   },
-  others: "Altri",
-  program: "Programma",
-  mostUsed: "Più usati",
-  firstChoices: "Programmi",
-  allPrograms: (n) => `Tutti i programmi (${n})`,
-  fewerPrograms: "Meno programmi",
-  options: "Opzioni",
-  start: "Avvia",
-  starting: "Avvio…",
-  stop: "Ferma",
-  stopSure: "Sicuro? Ferma",
-  sleeps: (name) => `${name} dorme`,
-  off: "Spenta",
-  unreachable: "Non raggiungibile",
-  unreachableNote: "Home Connect non la sente",
-  ready: "Pronta",
-  remoteOn: "Avvio remoto attivo",
-  states: {
-    delayedstart: "Avvio programmato",
-    run: "Lava",
-    pause: "In pausa",
-    actionrequired: "Serve una mano",
-    finished: "Finita",
-    error: "Errore",
-    aborting: "Si ferma…",
-  },
-  checkDisplay: "Guarda il display della lavastoviglie",
-  doorOpen: "Sportello aperto",
-  toEmpty: "Da svuotare",
-  ends: (time) => `finisce alle ${time}`,
-  progress: (pct) => `${pct}%`,
-  salt: "Sale quasi finito",
-  rinseAid: "Brillantante quasi finito",
-  disconnected: "Non connessa",
-  // Why Avvia is off, the first that applies.
-  why: {
-    unreachable: "La lavastoviglie non è raggiungibile",
-    off: "Accendi la lavastoviglie",
-    door: "Chiudi lo sportello",
-    remote: "Premi Avvio remoto sulla lavastoviglie",
-    program: "Scegli un programma",
-  },
-  times: (n) => `${n}×`,
-  duration: (minutes) => {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return h ? `${h} h${m ? ` ${m} min` : ""}` : `${m} min`;
-  },
-  estimate: (minutes) => `≈ ${STRINGS.duration(minutes)}`,
-  // How long the program took last time, and what the machine expected.
-  durationNote: ({ actual, estimate, options }) => {
-    const names = (options || []).map((o) => (STRINGS.switches[o] || {}).name || o);
-    const said = estimate && estimate !== actual
-      ? ` (la lavastoviglie ne stimava ${STRINGS.duration(estimate)})` : "";
-    const withs = names.length ? `, con ${names.join(" e ")}` : "";
-    return `Ultimo lavaggio: ${STRINGS.duration(actual)}${said}${withs}`;
-  },
-  noDuration: "Durata non ancora nota: la impara dal primo lavaggio",
 };
+// Italian for Italian, English for any other language.
+const textsFor = (language) => (/^it(-|$)/i.test(language || "") ? STRINGS.it : STRINGS.en);
+// Groups in the order the card lists them; programs not listed go in "others".
+const GROUPS = [
+  ["everyday", ["auto_2", "auto_1", "auto_3", "eco_50", "mixed_load", "night_wash"]],
+  ["quick", ["quick_45", "kurz_60", "super_60"]],
+  ["heavy", ["intensiv_70", "intensiv_power"]],
+  ["delicate", ["glas_40"]],
+  ["special", ["pre_rinse", "machine_care"]],
+];
 const PROGRAM_PREFIX = "dishcare_dishwasher_program_";
 const MOST_USED = 4;
 // Shown first while nothing has been used yet.
@@ -183,12 +325,24 @@ const el = (tag, cls, text) => {
   if (text !== undefined) node.textContent = text;
   return node;
 };
-const hhmm = (d) => d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+// Times follow the user's profile: its language, and its 12 or 24 hours when
+// it picks one. The machine's display and the floor keep their own clock.
+const timeFormat = (locale) => new Intl.DateTimeFormat(
+  locale.time_format === "system" ? undefined : locale.language || undefined,
+  { hour: "2-digit", minute: "2-digit", hour12: { 12: true, 24: false }[locale.time_format] },
+);
+const duration = (minutes) => {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h ? `${h} h${m ? ` ${m} min` : ""}` : `${m} min`;
+};
+const times = (n) => `${n}×`;
+const estimate = (minutes) => `≈ ${duration(minutes)}`;
 const pretty = (key) => {
   const words = key.replace(PROGRAM_PREFIX, "").replace(/_/g, " ");
   return words.charAt(0).toUpperCase() + words.slice(1);
 };
-const programName = (key) => (STRINGS.programs[key] || {}).name || pretty(key);
+const programName = (key, t) => (t.programs[key] || {}).name || pretty(key);
 const minutesOf = (d) => (d ? d.actual || d.estimate : undefined);
 
 const STYLE = `
@@ -540,6 +694,19 @@ class FilippaCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    // The language and the time format of the user's profile.
+    const locale = hass.locale || { language: hass.language };
+    const key = `${locale.language}|${locale.time_format}`;
+    if (key !== this._localeKey) {
+      this._localeKey = key;
+      this._timeFormat = timeFormat(locale);
+      const t = textsFor(locale.language);
+      if (t !== this.t) {
+        // Another language: the card is built again, in it.
+        this.t = t;
+        this._built = false;
+      }
+    }
     if (!this._built) this._build();
     this._update();
   }
@@ -573,7 +740,7 @@ class FilippaCard extends HTMLElement {
   _programs() {
     const sel = this._state("selected");
     const options = sel && sel.attributes && sel.attributes.options;
-    return options && options.length ? options : Object.keys(STRINGS.programs);
+    return options && options.length ? options : Object.keys(this.t.programs);
   }
 
   _call(domain, service, data) {
@@ -630,6 +797,7 @@ class FilippaCard extends HTMLElement {
   }
 
   _build() {
+    const t = this.t;
     const root = this.shadowRoot || this.attachShadow({ mode: "open" });
     root.innerHTML = `
       <style>${STYLE}</style>
@@ -651,12 +819,12 @@ class FilippaCard extends HTMLElement {
               <div class="pnote"></div>
             </div>
             <div class="optbox">
-              <div class="label">${STRINGS.options}</div>
+              <div class="label">${t.options}</div>
               <div class="pills"></div>
             </div>
             <div class="btns">
-              <button class="go start" type="button">${STRINGS.start}</button>
-              <button class="stop" type="button">${STRINGS.stop}</button>
+              <button class="go start" type="button">${t.start}</button>
+              <button class="stop" type="button">${t.stop}</button>
             </div>
             <div class="why"></div>
           </div>
@@ -700,6 +868,7 @@ class FilippaCard extends HTMLElement {
   }
 
   _tile(key, learned, selected, canPick) {
+    const t = this.t;
     const tile = el("button", "tile");
     tile.type = "button";
     tile.dataset.key = key;
@@ -708,15 +877,16 @@ class FilippaCard extends HTMLElement {
     tile.disabled = !canPick;
     const d = learned[key];
     const meta = [
-      minutesOf(d) && STRINGS.estimate(minutesOf(d)),
-      d && d.usage > 0 && STRINGS.times(d.usage),
+      minutesOf(d) && estimate(minutesOf(d)),
+      d && d.usage > 0 && times(d.usage),
     ].filter(Boolean).join(" · ");
-    tile.append(el("span", "tn", programName(key)), el("span", "tm", meta || " "));
-    tile.title = (STRINGS.programs[key] || {}).description || "";
+    tile.append(el("span", "tn", programName(key, t)), el("span", "tm", meta || " "));
+    tile.title = (t.programs[key] || {}).description || "";
     return tile;
   }
 
   _renderTiles(selected, canPick) {
+    const t = this.t;
     const programs = this._programs();
     const learned = this._learned();
     const used = programs.filter((k) => (learned[k] || {}).usage > 0)
@@ -726,12 +896,12 @@ class FilippaCard extends HTMLElement {
     if (selected && programs.includes(selected) && !top.includes(selected) && !this._showAll) {
       top.push(selected);
     }
-    this.$.tlabel.textContent = used.length ? STRINGS.mostUsed : STRINGS.firstChoices;
+    this.$.tlabel.textContent = used.length ? t.mostUsed : t.firstChoices;
     this.$.top.replaceChildren(...top.map((k) => this._tile(k, learned, selected, canPick)));
 
-    const groups = STRINGS.groups.map(([name, keys]) => [name, keys.map((k) => PROGRAM_PREFIX + k)]);
+    const groups = GROUPS.map(([group, keys]) => [t.groups[group], keys.map((k) => PROGRAM_PREFIX + k)]);
     const grouped = new Set(groups.flatMap(([, keys]) => keys));
-    groups.push([STRINGS.others, programs.filter((k) => !grouped.has(k))]);
+    groups.push([t.others, programs.filter((k) => !grouped.has(k))]);
     const nodes = [];
     for (const [name, keys] of groups) {
       const shown = keys.filter((k) => programs.includes(k));
@@ -741,16 +911,20 @@ class FilippaCard extends HTMLElement {
     this.$.all.replaceChildren(...nodes);
     this.$.all.classList.toggle("hidden", !this._showAll);
     this.$.top.classList.toggle("hidden", this._showAll);
-    this.$.more.textContent = this._showAll ? STRINGS.fewerPrograms : STRINGS.allPrograms(programs.length);
+    this.$.more.textContent = this._showAll ? t.fewerPrograms : t.allPrograms(programs.length);
 
     const d = selected && learned[selected];
-    this.$.desc.textContent = selected ? (STRINGS.programs[selected] || {}).description || "" : "";
-    this.$.note.textContent = !selected ? "" : d && d.actual ? STRINGS.durationNote(d) : STRINGS.noDuration;
+    this.$.desc.textContent = selected ? (t.programs[selected] || {}).description || "" : "";
+    this.$.note.textContent = !selected ? "" : d && d.actual ? t.durationNote(d, this._optionNames(d.options)) : t.noDuration;
+  }
+
+  _optionNames(options) {
+    return (options || []).map((o) => (this.t.switches[o] || {}).name || o);
   }
 
   _renderPills(canPick) {
     const pills = this._switches().map(([field, id, s]) => {
-      const text = STRINGS.switches[field] || { name: field.replace(/^dishcare_dishwasher_option_/, "") };
+      const text = this.t.switches[field] || { name: field.replace(/^dishcare_dishwasher_option_/, "") };
       const pill = el("button", s.state === "on" ? "pill on" : "pill", text.name);
       pill.type = "button";
       pill.dataset.entity = id;
@@ -764,6 +938,7 @@ class FilippaCard extends HTMLElement {
   }
 
   _update() {
+    const t = this.t;
     const name = this._config.name || "Filippa";
     const state = this._val("state");
     const connected = this._val("connected") !== "off" && state !== undefined;
@@ -799,24 +974,24 @@ class FilippaCard extends HTMLElement {
     const left = finish ? Math.max(0, Math.ceil((finish - Date.now()) / 60000)) : undefined;
     const clock = (m) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
     if (!connected) {
-      big = STRINGS.unreachable;
-      small = STRINGS.unreachableNote;
+      big = t.unreachable;
+      small = t.unreachableNote;
     } else if (busy || state === "finished" || state === "error") {
-      big = STRINGS.states[state];
-      const ends = finish && state !== "finished" ? STRINGS.ends(hhmm(finish)) : "";
-      const line = [program && programName(program), ends].filter(Boolean).join(" · ");
-      small = state === "actionrequired" ? STRINGS.checkDisplay
-        : state === "finished" ? (doorOpen ? STRINGS.doorOpen : STRINGS.toEmpty)
+      big = t.states[state];
+      const ends = finish && state !== "finished" ? t.ends(this._timeFormat.format(finish)) : "";
+      const line = [program && programName(program, t), ends].filter(Boolean).join(" · ");
+      small = state === "actionrequired" ? t.checkDisplay
+        : state === "finished" ? (doorOpen ? t.doorOpen : t.toEmpty)
         : line;
       lcd = state === "finished" ? "0:00" : left !== undefined ? clock(left) : "--:--";
     } else if (state === "ready") {
-      big = STRINGS.ready;
-      small = remoteStart ? STRINGS.remoteOn : STRINGS.why.remote;
+      big = t.ready;
+      small = remoteStart ? t.remoteOn : t.why.remote;
       const m = minutesOf(this._learned()[selectedNow]);
       lcd = m ? clock(m) : "--:--";
     } else {
-      big = STRINGS.sleeps(name);
-      small = STRINGS.off;
+      big = t.sleeps(name);
+      small = t.off;
     }
     // The countdown moves between the machine's updates too.
     if (finish && busy && !this._clock) this._clock = setInterval(() => this._update(), 30000);
@@ -831,13 +1006,13 @@ class FilippaCard extends HTMLElement {
     const showBar = (busy || state === "finished") && Number.isFinite(progress);
     this.$.bar.classList.toggle("hidden", !showBar);
     this.$.fill.style.width = `${showBar ? Math.min(100, Math.max(0, progress)) : 0}%`;
-    if (showBar) this.$.bar.title = STRINGS.progress(progress);
+    if (showBar) this.$.bar.title = `${progress}%`;
 
     const chips = [];
-    if (!connected && this._id("connected")) chips.push([STRINGS.disconnected, true]);
-    if (doorOpen && state !== "finished") chips.push([STRINGS.doorOpen, false]);
-    if (this._val("salt") === "present") chips.push([STRINGS.salt, true]);
-    if (this._val("rinse_aid") === "present") chips.push([STRINGS.rinseAid, true]);
+    if (!connected && this._id("connected")) chips.push([t.disconnected, true]);
+    if (doorOpen && state !== "finished") chips.push([t.doorOpen, false]);
+    if (this._val("salt") === "present") chips.push([t.salt, true]);
+    if (this._val("rinse_aid") === "present") chips.push([t.rinseAid, true]);
     this.$.chips.replaceChildren(...chips.map(([text, warn]) => el("span", warn ? "chip warn" : "chip", text)));
 
     // Programs and options can change on the machine only while it waits;
@@ -849,22 +1024,22 @@ class FilippaCard extends HTMLElement {
     this._renderPills(canPick && !!selectedNow);
 
     let why = "";
-    if (!connected) why = STRINGS.why.unreachable;
+    if (!connected) why = t.why.unreachable;
     else if (busy || state === "finished") why = "";
-    else if (state === "inactive") why = STRINGS.why.off;
-    else if (doorOpen) why = STRINGS.why.door;
-    else if (!remoteStart) why = STRINGS.why.remote;
-    else if (!selectedNow) why = STRINGS.why.program;
+    else if (state === "inactive") why = t.why.off;
+    else if (doorOpen) why = t.why.door;
+    else if (!remoteStart) why = t.why.remote;
+    else if (!selectedNow) why = t.why.program;
     const starting = !!(this._pending && this._pending.start);
     // Home Connect starts a program only from Ready, with remote start allowed.
     this.$.start.disabled = state !== "ready" || !!why || starting;
-    this.$.start.textContent = starting ? STRINGS.starting : STRINGS.start;
+    this.$.start.textContent = starting ? t.starting : t.start;
     this.$.why.textContent = why;
     const stoppable = STOPPABLE.has(state) && !!this._id("stop");
     this.$.stop.disabled = !stoppable;
     if (!stoppable) this._sure = false;
     this.$.stop.classList.toggle("sure", !!this._sure);
-    this.$.stop.textContent = this._sure ? STRINGS.stopSure : STRINGS.stop;
+    this.$.stop.textContent = this._sure ? t.stopSure : t.stop;
   }
 }
 
@@ -878,4 +1053,6 @@ const define = () => {
 define();
 customElements.whenDefined("home-assistant").then(define);
 window.customCards = window.customCards || [];
-window.customCards.push({ type: "filippa-card", name: "Filippa", description: "La lavastoviglie." });
+window.customCards.push({
+  type: "filippa-card", name: "Filippa", description: textsFor(navigator.language).description,
+});

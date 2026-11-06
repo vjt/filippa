@@ -16,6 +16,7 @@ class FilippaCycles(SensorEntity):
     how long its last finished cycle took (`programs`), the last cycle."""
 
     _attr_has_entity_name = True
+    _attr_translation_key = "cycles"
     _attr_should_poll = False
     _attr_icon = "mdi:dishwasher"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
@@ -23,10 +24,10 @@ class FilippaCycles(SensorEntity):
     def __init__(self, dishwasher: Dishwasher) -> None:
         self._dishwasher = dishwasher
         self._attr_unique_id = f"{DOMAIN}_{dishwasher.ha_id}_cycles"
-        self._attr_name = "Cicli"
         # Linked, not described: a device_info would make a device of Filippa's own.
         self.device_entry = dishwasher.device
-        # Next to home_connect's sensor.filippa_*; registered ones keep their id.
+        # Next to home_connect's sensor.filippa_*, in every language;
+        # registered ones keep their id.
         self.entity_id = f"sensor.{slugify(dishwasher.name)}_cicli"
 
     @property
