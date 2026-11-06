@@ -3,7 +3,11 @@
   "name": "Filippa",
   "after_dependencies": [
     "lovelace",
-    "recorder"
+    "recorder",
+    "http"
+  ],
+  "categories": [
+    "appliances_cleaning"
   ],
   "codeowners": [
     "@vjt"
@@ -17,5 +21,5 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/vjt/filippa/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
