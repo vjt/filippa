@@ -3,7 +3,8 @@
   "name": "Filippa",
   "after_dependencies": [
     "lovelace",
-    "recorder"
+    "recorder",
+    "http"
   ],
   "categories": [
     "appliances_cleaning"
@@ -14,8 +15,7 @@
   "config_flow": true,
   "dependencies": [
     "frontend",
-    "home_connect",
-    "http"
+    "home_connect"
   ],
   "documentation": "https://github.com/vjt/filippa",
   "iot_class": "calculated",
