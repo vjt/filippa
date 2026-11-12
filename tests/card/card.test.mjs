@@ -5,6 +5,9 @@ import { JSDOM } from "jsdom";
 import fs from "node:fs";
 import assert from "node:assert/strict";
 
+// Dates and times of the cycles are the browser's local ones: fixed here.
+process.env.TZ = "UTC";
+
 const here = (path) => new URL(path, import.meta.url);
 const source = fs.readFileSync(here("../../custom_components/filippa/www/filippa-card.js"), "utf8");
 let failures = 0;
@@ -40,6 +43,23 @@ const LEARNED = {
   [P("glas_40")]: { usage: 1, estimate: 110, actual: 108, options: [] },
 };
 
+const O = (k) => `dishcare_dishwasher_option_${k}`;
+// The last cycles, newest first, as the cycles sensor gives them.
+const RECENT = [
+  { program: P("quick_45"), started: "2026-10-07T17:06:26+00:00", ended: "2026-10-07T17:47:38+00:00",
+    estimate: 29, actual: 41, options: [], outcome: "finished" },
+  { program: P("super_60"), started: "2026-10-06T06:49:53+00:00", ended: "2026-10-06T09:24:05+00:00",
+    estimate: 158, actual: 154, options: [O("hygiene_plus"), O("intensiv_zone")], outcome: "finished" },
+  { program: P("kurz_60"), started: "2026-10-05T13:52:47+00:00", ended: "2026-10-05T15:33:33+00:00",
+    estimate: 125, actual: null, options: [], outcome: "interrupted" },
+  { program: P("eco_50"), started: "2026-10-03T18:01:07+00:00", ended: "2026-10-03T22:32:59+00:00",
+    estimate: 270, actual: 272, options: [], outcome: "finished" },
+  { program: P("intensiv_70"), started: "2026-09-29T19:03:12+00:00", ended: "2026-09-29T22:01:25+00:00",
+    estimate: 180, actual: 178, options: [O("extra_dry")], outcome: "finished" },
+  { program: P("auto_2"), started: "2026-09-28T13:25:16+00:00", ended: "2026-09-28T16:00:11+00:00",
+    estimate: 160, actual: 155, options: [], outcome: "finished" },
+];
+
 const s = (state, attributes = {}) => ({ state, attributes, last_changed: new Date().toISOString() });
 
 function readyStates(over = {}) {
@@ -57,7 +77,7 @@ function readyStates(over = {}) {
     "button.filippa_stop_program": s("unknown"),
     "sensor.filippa_salt_nearly_empty": s("off"),
     "sensor.filippa_rinse_aid_nearly_empty": s("off"),
-    "sensor.filippa_cicli": s("50", { programs: LEARNED }),
+    "sensor.filippa_cicli": s("50", { programs: LEARNED, recent: RECENT }),
     "switch.filippa_intensive_zone": s("off"),
     "switch.filippa_vario_speed": s("on"),
     "switch.filippa_half_load": s("off"),
@@ -95,7 +115,10 @@ function mount(states = readyStates(), config = {}, i18n = ITALIAN) {
   window.eval(source);
   const calls = [];
   const card = window.document.createElement("filippa-card");
-  card.setConfig({ name: "Filippa", device_id: "dev123", entities: ENTITIES, switches: SWITCHES, ...config });
+  card.setConfig({
+    name: "Filippa", device_id: "dev123", entities: ENTITIES, switches: SWITCHES,
+    history_path: "/filippa/cycles", ...config,
+  });
   window.document.body.appendChild(card);
   let current = states;
   let lang = i18n;
@@ -391,6 +414,144 @@ test("a change of language in the profile rebuilds the card in it", () => {
   t.speak(ITALIAN);
   assert.equal(t.$(".big").textContent, "Pronta");
 });
+
+const text = (node) => [...node.querySelectorAll(".cname, .cdur, .chip, .cwhen")].map((n) => n.textContent);
+
+test("the last cycle, in evidence: what, when, how long, with what, how it ended", () => {
+  const t = mount();
+  assert.ok(!t.$(".cyclebox").classList.contains("hidden"));
+  assert.equal(t.$(".cyclebox .label").textContent, "Ultimo ciclo");
+  assert.deepEqual(text(t.$(".lastc")), ["Rapido 45°", "Finito", "mer 7 ott · 17:06–17:47", "41 min"]);
+});
+
+test("the cycles before it, in a short list that scrolls", () => {
+  const t = mount();
+  assert.equal(t.$(".before").textContent, "Prima");
+  const rows = t.$$(".clist .cycle");
+  assert.equal(rows.length, 5);
+  assert.deepEqual(text(rows[0]), ["Super 60°", "2 h 34 min", "mar 6 ott · 06:49–09:24 · Igiene+, Zona intensiva"]);
+  assert.deepEqual(text(rows[1]), ["Rapido 60°", "fermato dopo 1 h 41 min", "lun 5 ott · 13:52–15:33"]);
+  assert.ok(rows[1].classList.contains("stopped"));
+  assert.ok(!rows[0].classList.contains("stopped"));
+});
+
+test("an interrupted last cycle says so", () => {
+  const recent = [RECENT[2], ...RECENT.slice(3)];
+  const t = mount(readyStates({ "sensor.filippa_cicli": s("50", { programs: LEARNED, recent }) }));
+  assert.deepEqual(text(t.$(".lastc")), ["Rapido 60°", "Interrotto", "lun 5 ott · 13:52–15:33", "fermato dopo 1 h 41 min"]);
+  assert.ok(t.$(".lastc .chip").classList.contains("warn"));
+});
+
+test("Tutti i cicli opens the history page inside the frontend", () => {
+  const t = mount();
+  const changes = [];
+  t.window.addEventListener("location-changed", () => changes.push(t.window.location.pathname));
+  assert.equal(t.$(".allc").textContent, "Tutti i cicli");
+  t.$(".allc").click();
+  assert.equal(t.window.location.pathname, "/filippa/cycles");
+  assert.deepEqual(changes, ["/filippa/cycles"]);
+});
+
+test("no cycles yet, or an older Filippa: no cycle box; no page: no link", () => {
+  const none = mount(readyStates({ "sensor.filippa_cicli": s("0", { programs: {} }) }));
+  assert.ok(none.$(".cyclebox").classList.contains("hidden"));
+  const alone = mount(readyStates({ "sensor.filippa_cicli": s("1", { programs: LEARNED, recent: RECENT.slice(0, 1) }) }),
+    { history_path: undefined });
+  assert.ok(!alone.$(".cyclebox").classList.contains("hidden"));
+  assert.ok(alone.$(".before").classList.contains("hidden"));
+  assert.ok(alone.$(".allc").classList.contains("hidden"));
+});
+
+test("the list is drawn again only when the cycles change, so it keeps its scroll", () => {
+  const t = mount();
+  const row = t.$(".clist .cycle");
+  t.set(runningStates());
+  assert.equal(t.$(".clist .cycle"), row);
+  const recent = [{ ...RECENT[0], ended: "2026-10-08T10:00:00+00:00", started: "2026-10-08T09:00:00+00:00" }, ...RECENT];
+  t.set(readyStates({ "sensor.filippa_cicli": s("51", { programs: LEARNED, recent }) }));
+  assert.notEqual(t.$(".clist .cycle"), row);
+  assert.equal(t.$$(".clist .cycle").length, 6);
+});
+
+test("in English: the last cycle and the ones before", () => {
+  const t = mount(readyStates(), {}, ENGLISH);
+  assert.deepEqual(t.$$(".cyclebox .label").map((l) => l.textContent), ["Last cycle", "Before that"]);
+  assert.deepEqual(text(t.$(".lastc")), ["Quick 45°", "Finished", "Wed, Oct 7 · 05:06 PM–05:47 PM", "41 min"]);
+  assert.deepEqual(text(t.$$(".clist .cycle")[1]),
+    ["Quick 60°", "stopped after 1 h 41 min", "Mon, Oct 5 · 01:52 PM–03:33 PM"]);
+  assert.equal(t.$(".allc").textContent, "All cycles");
+  t.speak({ locale: { language: "en", time_format: "24" } });
+  assert.deepEqual(text(t.$(".lastc"))[2], "Wed, Oct 7 · 17:06–17:47");
+});
+
+// The history page.
+function mountCycles({ reply = Promise.resolve({ cycles: RECENT }), i18n = ITALIAN, config = {} } = {}) {
+  const dom = new JSDOM("<!doctype html><body></body>", { runScripts: "outside-only", url: "https://ha.local/filippa/cycles" });
+  const { window } = dom;
+  windows.push(window);
+  window.eval(source);
+  const asked = [];
+  let answer = reply;
+  const card = window.document.createElement("filippa-cycles-card");
+  card.setConfig({ name: "Filippa", device_id: "dev123", entities: { cycles: "sensor.filippa_cicli" }, ...config });
+  window.document.body.appendChild(card);
+  let sensor = { state: "50", attributes: {}, last_updated: "2026-10-07T17:47:38+00:00" };
+  let lang = i18n;
+  const hass = () => ({
+    ...lang, states: { "sensor.filippa_cicli": sensor, "sensor.other": s(String(Math.random())) },
+    callWS: (msg) => { asked.push(JSON.parse(JSON.stringify(msg))); return answer; },
+  });
+  card.hass = hass();
+  const $ = (q) => card.shadowRoot.querySelector(q);
+  const $$ = (q) => [...card.shadowRoot.querySelectorAll(q)];
+  return {
+    card, $, $$, asked,
+    poke: () => { card.hass = hass(); },
+    cycleEnds: (next) => { answer = next; sensor = { ...sensor, state: "51", last_updated: "2026-10-08T10:00:00+00:00" }; card.hass = hass(); },
+    speak: (next) => { lang = next; card.hass = hass(); },
+  };
+}
+const settle = () => new Promise((r) => setTimeout(r, 0));
+
+await (async () => {
+  const t = mountCycles();
+  assert.equal(t.$(".note").textContent, "Leggo i cicli…");
+  await settle();
+  test("history page: every cycle kept, newest first, by month", () => {
+    assert.deepEqual(t.asked, [{ type: "filippa/cycles", device_id: "dev123" }]);
+    assert.equal(t.$("h1").textContent, "I cicli di Filippa");
+    assert.equal(t.$(".count").textContent, "6 cicli");
+    assert.equal(t.$(".note").textContent, "");
+    assert.deepEqual(t.$$(".month").map((m) => m.textContent), ["Ottobre 2026", "Settembre 2026"]);
+    assert.deepEqual(t.$$(".cycle .cname").map((n) => n.textContent),
+      ["Rapido 45°", "Super 60°", "Rapido 60°", "Eco 50°", "Intensivo 70°", "Auto 45–65°"]);
+    assert.deepEqual(text(t.$$(".cycle")[2]), ["Rapido 60°", "fermato dopo 1 h 41 min", "lun 5 ott · 13:52–15:33"]);
+  });
+  t.poke();
+  t.cycleEnds(Promise.resolve({ cycles: [{ ...RECENT[0], started: "2026-11-01T09:00:00+00:00", ended: "2026-11-01T10:00:00+00:00", actual: 60 }, ...RECENT] }));
+  await settle();
+  test("history page: read again when a cycle ends, not on every update", () => {
+    assert.equal(t.asked.length, 2);
+    assert.equal(t.$(".count").textContent, "7 cicli");
+    assert.equal(t.$(".month").textContent, "Novembre 2026");
+  });
+  t.speak(ENGLISH);
+  test("history page: in English, without reading again", () => {
+    assert.equal(t.asked.length, 2);
+    assert.equal(t.$("h1").textContent, "Filippa's cycles");
+    assert.equal(t.$(".count").textContent, "7 cycles");
+    assert.deepEqual(t.$$(".month").map((m) => m.textContent), ["November 2026", "October 2026", "September 2026"]);
+  });
+
+  const empty = mountCycles({ reply: Promise.resolve({ cycles: [] }) });
+  const broken = mountCycles({ reply: Promise.reject(new Error("no")), i18n: ENGLISH });
+  await settle();
+  test("history page: nothing yet, or nothing readable", () => {
+    assert.equal(empty.$(".note").textContent, "Ancora nessun ciclo");
+    assert.equal(empty.$(".count").textContent, "0 cicli");
+    assert.equal(broken.$(".note").textContent, "Couldn't read the cycles");
+  });
+})();
 
 await new Promise((r) => setTimeout(r, 20));
 for (const window of windows) window.close();

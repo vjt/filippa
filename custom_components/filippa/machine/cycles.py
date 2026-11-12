@@ -5,10 +5,15 @@ live, by part: "state" (operation state), "active" and "selected" (program
 keys), "finish" (the finish time sensor) and the option switches (by service
 field). It notices a cycle starting (the operation state turns to run), which
 program runs, the machine's estimate (finish time - start) and how the cycle
-ends: finished, with its real duration, or interrupted.
+ends: finished, with its real duration, or interrupted. When the machine was
+out of reach as the cycle ended, nobody saw how or when: the outcome is
+unknown.
+
+The log keeps the cycles themselves, for the history page.
 """
 from __future__ import annotations
 
+from bisect import bisect
 from datetime import datetime, timedelta
 
 # States a cycle goes on through: the machine waits for a hand, or for its door.
@@ -19,6 +24,14 @@ UNKNOWN = {None, "", "unknown"}
 OPTION_PREFIX = "dishcare_dishwasher_option_"
 # Past this, a finish time belongs to some other cycle.
 LONGEST = timedelta(hours=12)
+# The log keeps a year of cycles (what the recorder can hold), at most KEEP_MAX.
+KEEP = timedelta(days=365)
+KEEP_MAX = 1000
+# Shorter than this, a cycle washed nothing: the machine flickers run,
+# ready, run as a program starts.
+SHORTEST = timedelta(minutes=1)
+# Ends this close are the same cycle's, read back from the recorder.
+SAME = timedelta(seconds=1)
 
 
 def _minutes(delta: timedelta) -> int:
@@ -40,11 +53,17 @@ class CycleTracker:
     def feed(self, when: datetime, part: str, value: str | None) -> dict | None:
         """The cycle that closed with this state, if one did."""
         if value in UNAVAILABLE:
+            # Out of reach mid-cycle: until it shows running again, an end
+            # would be seen late, if at all.
+            if part == "state" and self.open is not None:
+                self.open["unseen"] = True
             return None
         if value in UNKNOWN:
             if part == "state":
                 return None
             value = None
+        if part == "state" and value in RUNNING and self.open is not None:
+            self.open.pop("unseen", None)
         first = part not in self.states
         previous = self.states.get(part)
         self.states[part] = value
@@ -94,7 +113,9 @@ class CycleTracker:
 
     def _close(self, when: datetime, value: str) -> dict:
         open_, self.open = self.open, None
-        finished = value == "finished"
+        outcome = (
+            "unknown" if open_.get("unseen") else "finished" if value == "finished" else "interrupted"
+        )
         started = open_["started"]
         return {
             "program": open_["program"],
@@ -102,10 +123,12 @@ class CycleTracker:
             "ended": when.isoformat(),
             "estimate": open_["estimate"],
             "actual": (
-                _minutes(when - datetime.fromisoformat(started)) if finished and started else None
+                _minutes(when - datetime.fromisoformat(started))
+                if outcome == "finished" and started
+                else None
             ),
             "options": open_["options"],
-            "outcome": "finished" if finished else "interrupted",
+            "outcome": outcome,
         }
 
 
@@ -157,3 +180,54 @@ class Stats:
             program: {"usage": count, **self.durations.get(program, empty)}
             for program, count in self.counts.items()
         }
+
+
+def cycles_in(states) -> list[dict]:
+    """The cycles a tracker of its own closes over these states, in time order:
+    the log rebuilt from the recorder, without touching the stats."""
+    tracker = CycleTracker()
+    return [cycle for when, part, value in states if (cycle := tracker.feed(when, part, value))]
+
+
+def _ended(cycle: dict) -> datetime:
+    return datetime.fromisoformat(cycle["ended"])
+
+
+def _whole(cycle: dict) -> bool:
+    """Seen from start to end, with a wash in between: a cycle to list."""
+    return (
+        cycle["started"] is not None
+        and cycle["outcome"] != "unknown"
+        and _ended(cycle) - datetime.fromisoformat(cycle["started"]) >= SHORTEST
+    )
+
+
+class CycleLog:
+    """The cycles seen whole, oldest first: a year of them, KEEP_MAX at most."""
+
+    def __init__(self, data: list | None = None) -> None:
+        self.cycles: list[dict] = list(data or [])
+
+    def as_list(self) -> list[dict]:
+        return list(self.cycles)
+
+    def add(self, cycle: dict, now: datetime) -> bool:
+        """Keep a closed cycle, unless it is not one to list or is kept already."""
+        if not _whole(cycle):
+            return False
+        ended = _ended(cycle)
+        at = bisect(self.cycles, ended, key=_ended)
+        if any(abs(_ended(c) - ended) < SAME for c in self.cycles[max(at - 1, 0) : at + 1]):
+            return False
+        self.cycles.insert(at, cycle)
+        self.trim(now)
+        return True
+
+    def trim(self, now: datetime) -> None:
+        oldest = now - KEEP
+        while self.cycles and _ended(self.cycles[0]) <= oldest:
+            self.cycles.pop(0)
+        del self.cycles[:-KEEP_MAX]
+
+    def newest(self, count: int | None = None) -> list[dict]:
+        return self.cycles[::-1][:count]

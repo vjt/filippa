@@ -6,6 +6,9 @@ from homeassistant.util import slugify
 
 from . import DOMAIN, Dishwasher
 
+# The cycles the card lists under the last one; the rest are on the history page.
+RECENT = 6
+
 
 async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities([FilippaCycles(hass.data[DOMAIN][entry.entry_id])])
@@ -13,13 +16,16 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 class FilippaCycles(SensorEntity):
     """The cycles seen so far. Attributes: per program how often it ran and
-    how long its last finished cycle took (`programs`), the last cycle."""
+    how long its last finished cycle took (`programs`), the last cycle, the
+    last few cycles of the log, newest first (`recent`, not recorded: the
+    log has them)."""
 
     _attr_has_entity_name = True
     _attr_translation_key = "cycles"
     _attr_should_poll = False
     _attr_icon = "mdi:dishwasher"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _unrecorded_attributes = frozenset({"recent"})
 
     def __init__(self, dishwasher: Dishwasher) -> None:
         self._dishwasher = dishwasher
@@ -37,7 +43,11 @@ class FilippaCycles(SensorEntity):
     @property
     def extra_state_attributes(self) -> dict:
         stats = self._dishwasher.stats
-        return {"programs": stats.programs(), "last": stats.last}
+        return {
+            "programs": stats.programs(),
+            "last": stats.last,
+            "recent": self._dishwasher.log.newest(RECENT),
+        }
 
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(self._dishwasher.add_listener(self.async_write_ha_state))

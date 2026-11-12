@@ -41,7 +41,11 @@ A **Filippa** sidebar dashboard, one full-page card per dishwasher:
   mistake leaves wet, dirty dishes);
 - why Start is off when it is ("Press Remote Start on the dishwasher",
   "Close the door", ...), and warnings for salt and rinse aid running
-  low.
+  low;
+- the last cycle in evidence (program, when it ran, how long it took, the
+  options, finished or interrupted), the five before it in a short
+  scrolling list, and **All cycles**: a page with every cycle Filippa keeps,
+  newest first, by month.
 
 The card speaks the language of your Home Assistant profile: Italian, or
 English for any other.
@@ -70,14 +74,27 @@ Filippa has seen, with these attributes:
   machine expected at the start, minutes), `actual` (how long the last
   finished cycle took) and `options` (those it ran with);
 - `last`: the last cycle: program, start, end, estimate, real duration,
-  options, `finished` or `interrupted`.
+  options, `finished`, `interrupted` or `unknown`;
+- `recent`: the last six cycles of the log, newest first (not recorded:
+  the log keeps them).
 
 A cycle starts when the operation state turns to `run` and ends at
 `finished` (with its real duration) or at anything else that is not a pause
-(interrupted: it counts as a use, but teaches no duration). Filippa follows
-the states live, and on every start it catches up on the recorder since the
-last state it took in: the first time, up to 30 days back, as far as the recorder
-goes (10 days by default), so the card knows your habits from day one.
+(interrupted: it counts as a use, but teaches no duration). If the machine
+was out of reach (`unavailable`) when the cycle ended, nobody saw when or
+how it ended: `unknown`, a use with no duration.
+
+Filippa also keeps a log of the cycles themselves, for the card: those it
+saw whole (from their start, to an end it saw, longer than a minute: a
+machine starting a program may say run, ready, run within a second or
+two), from the last 365 days, a thousand at most. The history page reads it
+over the websocket (`filippa/cycles`, with the `device_id`).
+
+Filippa follows the states live, and on every start it catches up on the
+recorder since the last state it took in. The first time, or whenever its
+log is empty (as after an update from 0.2), it reads the whole year back,
+as far as the recorder goes (10 days by default), and rebuilds the log from
+it; cycles already counted are not counted again.
 
 ### What you can build on it
 

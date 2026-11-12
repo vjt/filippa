@@ -12,7 +12,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.filippa import DOMAIN, dishwashers
 from custom_components.filippa.dashboard import _save
 
-from fake import ACTIVE, CYCLES, HA_ID, P, STATE, VARIO, cycle, setup_entry
+from fake import ACTIVE, CYCLES, HA_ID, P, STATE, VARIO, cycle, flicker, setup_entry
 
 async def test_flow_offers_the_dishwasher_only(hass, dishwasher, oven, no_dashboard):
     assert dishwashers(hass) == {dishwasher: "Filippa"}
@@ -87,6 +87,44 @@ async def test_a_stopped_cycle_counts_but_teaches_no_duration(hass, dishwasher, 
     assert programs == {P + "intensiv_70": {"usage": 1, "estimate": None, "actual": None, "options": []}}
 
 
+async def test_the_last_cycles_are_on_the_sensor_newest_first(hass, dishwasher, no_dashboard, freezer):
+    await setup_entry(hass, dishwasher)
+    # No recorder here: the tracker must see the machine idle before a start.
+    hass.states.async_set(STATE, "inactive")
+    for n in range(7):
+        cycle(hass, freezer, P + ("eco_50" if n % 2 else "auto_2"), minutes=100 + n, estimate=100)
+    flicker(hass, freezer)
+    await hass.async_block_till_done()
+    state = hass.states.get(CYCLES)
+    # The flicker counts, as it always did, but is no wash to list.
+    assert state.state == "8"
+    recent = state.attributes["recent"]
+    assert [c["actual"] for c in recent] == [106, 105, 104, 103, 102, 101]
+    assert recent[-1]["started"] is not None
+    assert recent[0]["program"] == P + "auto_2"
+    assert recent[0]["outcome"] == "finished"
+
+
+async def test_every_cycle_kept_is_one_websocket_call_away(
+    hass, dishwasher, no_dashboard, freezer, hass_ws_client
+):
+    await setup_entry(hass, dishwasher)
+    # Connected first: the access token would expire in the hours the cycles take.
+    client = await hass_ws_client(hass)
+    hass.states.async_set(STATE, "inactive")
+    for n in range(8):
+        cycle(hass, freezer, P + "auto_2", minutes=100 + n, estimate=100)
+    await hass.async_block_till_done()
+    await client.send_json_auto_id({"type": "filippa/cycles", "device_id": dishwasher})
+    reply = await client.receive_json()
+    assert reply["success"]
+    assert [c["actual"] for c in reply["result"]["cycles"]] == [107, 106, 105, 104, 103, 102, 101, 100]
+    await client.send_json_auto_id({"type": "filippa/cycles", "device_id": "nope"})
+    reply = await client.receive_json()
+    assert not reply["success"]
+    assert reply["error"]["code"] == "not_found"
+
+
 async def test_the_dashboard_gets_one_card_with_parts_and_switches(hass, dishwasher, no_dashboard):
     from homeassistant.components.lovelace.dashboard import LovelaceStorage
 
@@ -97,10 +135,19 @@ async def test_the_dashboard_gets_one_card_with_parts_and_switches(hass, dishwas
     storage = hass.data["lovelace"].dashboards["filippa"]
     assert isinstance(storage, LovelaceStorage)
     config = await storage.async_load(False)
-    [view] = config["views"]
+    [view, history] = config["views"]
     [card] = view["cards"]
     assert card["type"] == "custom:filippa-card"
     assert card["device_id"] == dishwasher
+    # The history page: a subview the card links to, with a way back.
+    assert card["history_path"] == "/filippa/cycles"
+    assert (history["path"], history["subview"], history["back_path"]) == (
+        "cycles", True, "/filippa/default"
+    )
+    assert history["cards"] == [{
+        "type": "custom:filippa-cycles-card", "name": "Filippa", "device_id": dishwasher,
+        "entities": {"cycles": CYCLES},
+    }]
     assert card["entities"]["state"] == STATE
     assert card["entities"]["selected"] == "select.filippa_selected_program"
     assert card["entities"]["stop"] == "button.filippa_stop_program"
