@@ -8,7 +8,16 @@
 //   device_id: <home_connect device>
 //   entities: {state: sensor.filippa_operation_state, selected: select..., ...}
 //   switches: {dishcare_dishwasher_option_half_load: switch.filippa_half_load, ...}
-// Missing roles are simply not shown.
+//   history_path: /filippa/cycles
+// Missing roles are simply not shown. Below the controls: the last cycle, the
+// few before it, and a link to the history page.
+//
+// The history page is a second card, every cycle Filippa keeps, newest first,
+// read from Home Assistant over the websocket (filippa/cycles):
+//   type: custom:filippa-cycles-card
+//   name: Filippa
+//   device_id: <home_connect device>
+//   entities: {cycles: sensor.filippa_cicli}
 
 // Every text the card shows, one table per language: Italian for an Italian
 // frontend, English for any other.
@@ -156,6 +165,18 @@ const STRINGS = {
       return `Ultimo lavaggio: ${duration(actual)}${said}${withs}`;
     },
     noDuration: "Durata non ancora nota: la impara dal primo lavaggio",
+    // The cycles she ran.
+    lastCycle: "Ultimo ciclo",
+    before: "Prima",
+    allCycles: "Tutti i cicli",
+    outcomes: { finished: "Finito", interrupted: "Interrotto" },
+    stoppedAfter: (d) => `fermato dopo ${d}`,
+    unknownProgram: "Programma sconosciuto",
+    cyclesOf: (name) => `I cicli di ${name}`,
+    cycleCount: (n) => (n === 1 ? "1 ciclo" : `${n} cicli`),
+    noCycles: "Ancora nessun ciclo",
+    loading: "Leggo i cicli…",
+    loadFailed: "Non riesco a leggere i cicli",
   },
   en: {
     description: "The dishwasher.",
@@ -297,6 +318,17 @@ const STRINGS = {
       return `Last wash: ${duration(actual)}${said}${withs}`;
     },
     noDuration: "Duration not known yet: she learns it from the first wash",
+    lastCycle: "Last cycle",
+    before: "Before that",
+    allCycles: "All cycles",
+    outcomes: { finished: "Finished", interrupted: "Interrupted" },
+    stoppedAfter: (d) => `stopped after ${d}`,
+    unknownProgram: "Unknown program",
+    cyclesOf: (name) => `${name}'s cycles`,
+    cycleCount: (n) => (n === 1 ? "1 cycle" : `${n} cycles`),
+    noCycles: "No cycles yet",
+    loading: "Reading the cycles…",
+    loadFailed: "Couldn't read the cycles",
   },
 };
 // Italian for Italian, English for any other language.
@@ -344,6 +376,66 @@ const pretty = (key) => {
 };
 const programName = (key, t) => (t.programs[key] || {}).name || pretty(key);
 const minutesOf = (d) => (d ? d.actual || d.estimate : undefined);
+const optionNames = (options, t) => (options || []).map((o) => (t.switches[o] || {}).name || o);
+// Dates and times of the cycles, after the user's profile like the rest.
+const formats = (locale) => ({
+  time: timeFormat(locale),
+  date: new Intl.DateTimeFormat(locale.language || undefined, { weekday: "short", day: "numeric", month: "short" }),
+  month: new Intl.DateTimeFormat(locale.language || undefined, { month: "long", year: "numeric" }),
+});
+const capital = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+// Inside the frontend, as its own links do: no page load.
+const navigate = (path) => {
+  window.history.pushState(null, "", path);
+  window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
+};
+
+// One cycle: what ran, when, for how long, with which options, how it ended.
+// `last`: the one in evidence, with its outcome spelled out.
+const cycleNode = (c, t, fmt, last = false) => {
+  const started = new Date(c.started);
+  const ended = new Date(c.ended);
+  const finished = c.outcome === "finished";
+  const minutes = finished && c.actual != null ? c.actual : Math.round((ended - started) / 60000);
+  const length = finished ? duration(minutes) : t.stoppedAfter(duration(minutes));
+  const node = el("div", `cycle${last ? " last" : ""}${finished ? "" : " stopped"}`);
+  const head = el("div", "chead");
+  head.append(
+    el("span", "cname", c.program ? programName(c.program, t) : t.unknownProgram),
+    last ? el("span", finished ? "chip" : "chip warn", t.outcomes[c.outcome] || c.outcome)
+      : el("span", "cdur", length),
+  );
+  const when = `${fmt.date.format(started)} · ${fmt.time.format(started)}–${fmt.time.format(ended)}`;
+  const options = optionNames(c.options, t).join(", ");
+  const lines = last ? [when, [length, options].filter(Boolean).join(" · ")]
+    : [[when, options].filter(Boolean).join(" · ")];
+  node.append(head, ...lines.map((line) => el("div", "cwhen", line)));
+  return node;
+};
+
+const CYCLE_STYLE = `
+  .cycle { display: flex; flex-direction: column; gap: 2px; padding: 8px 2px;
+           border-top: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12)); }
+  .cycle:first-child { border-top: none; }
+  .chead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .cname { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cdur { font-size: 0.9em; white-space: nowrap; opacity: 0.8; }
+  .stopped .cdur { color: var(--warning-color, #b36b00); opacity: 1; }
+  .cwhen { font-size: 0.8em; opacity: 0.65; }
+  .cycle.last { border: none; padding: 0 0 4px; gap: 4px; }
+  .cycle.last .cname { font-size: 1.25em; }
+  .cycle.last .cwhen { font-size: 0.9em; opacity: 0.75; }
+  .chip {
+    padding: 6px 12px; border-radius: 999px; font-size: 0.9em;
+    background: var(--secondary-background-color, #eee);
+  }
+  .chip.warn { background: rgba(255, 170, 0, 0.18); color: var(--warning-color, #b36b00); }
+  .month {
+    font-size: 0.72em; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    opacity: 0.55; padding: 16px 2px 2px;
+  }
+  .hidden { display: none !important; }
+`;
 
 const STYLE = `
   :host { display: block; height: 100%; }
@@ -466,11 +558,6 @@ const STYLE = `
   }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
   .chips:empty { display: none; }
-  .chip {
-    padding: 6px 12px; border-radius: 999px; font-size: 0.9em;
-    background: var(--secondary-background-color, #eee);
-  }
-  .chip.warn { background: rgba(255, 170, 0, 0.18); color: var(--warning-color, #b36b00); }
   label, .label { font-size: 0.8em; opacity: 0.7; display: block; margin-bottom: 6px; }
   .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .group {
@@ -519,6 +606,11 @@ const STYLE = `
   .hidden { display: none !important; }
   .side { display: flex; flex-direction: column; align-items: center; gap: 20px;
           width: min(100%, 560px); }
+  .cyclebox { gap: 6px; }
+  .cyclebox .label { margin: 8px 0 0; }
+  .cyclebox .label:first-child { margin-top: 0; }
+  .clist { max-height: 13em; overflow-y: auto; overscroll-behavior: contain; }
+  ${CYCLE_STYLE}
   @media (min-width: 900px) and (min-aspect-ratio: 1/1) {
     .wrap { flex-direction: row; gap: 48px; }
     .stage { width: min(42vw, 74vh, 560px); }
@@ -699,7 +791,8 @@ class FilippaCard extends HTMLElement {
     const key = `${locale.language}|${locale.time_format}`;
     if (key !== this._localeKey) {
       this._localeKey = key;
-      this._timeFormat = timeFormat(locale);
+      this._formats = formats(locale);
+      this._timeFormat = this._formats.time;
       const t = textsFor(locale.language);
       if (t !== this.t) {
         // Another language: the card is built again, in it.
@@ -828,6 +921,13 @@ class FilippaCard extends HTMLElement {
             </div>
             <div class="why"></div>
           </div>
+          <div class="panel cyclebox hidden">
+            <div class="label">${t.lastCycle}</div>
+            <div class="lastc"></div>
+            <div class="label before">${t.before}</div>
+            <div class="clist"></div>
+            <button class="more allc" type="button">${t.allCycles}</button>
+          </div>
         </div>
       </div>`;
     const $ = (sel) => root.querySelector(sel);
@@ -836,8 +936,11 @@ class FilippaCard extends HTMLElement {
       bar: $(".bar"), fill: $(".bar > div"), chips: $(".chips"), tlabel: $(".tlabel"),
       top: $(".tiles.top"), all: $(".tiles.all"), more: $(".more"), desc: $(".pdesc"),
       note: $(".pnote"), optbox: $(".optbox"), pills: $(".pills"), start: $(".start"),
-      stop: $(".stop"), why: $(".why"),
+      stop: $(".stop"), why: $(".why"), cyclebox: $(".cyclebox"), lastc: $(".lastc"),
+      before: $(".before"), clist: $(".clist"), allc: $(".allc"),
     };
+    this._cyclesKey = undefined;
+    this.$.allc.addEventListener("click", () => navigate(this._config.history_path));
     try {
       this._showAll = localStorage.getItem("filippa-all-programs") === "1";
     } catch (err) {
@@ -919,7 +1022,23 @@ class FilippaCard extends HTMLElement {
   }
 
   _optionNames(options) {
-    return (options || []).map((o) => (this.t.switches[o] || {}).name || o);
+    return optionNames(options, this.t);
+  }
+
+  // The last cycle, the few before it: drawn again only when they change,
+  // so the list keeps its scroll.
+  _renderCycles() {
+    const recent = ((this._state("cycles") || {}).attributes || {}).recent || [];
+    const key = `${this._localeKey}|${JSON.stringify(recent)}`;
+    if (key === this._cyclesKey) return;
+    this._cyclesKey = key;
+    const [last, ...before] = recent;
+    this.$.cyclebox.classList.toggle("hidden", !last);
+    if (!last) return;
+    this.$.lastc.replaceChildren(cycleNode(last, this.t, this._formats, true));
+    this.$.clist.replaceChildren(...before.map((c) => cycleNode(c, this.t, this._formats)));
+    this.$.before.classList.toggle("hidden", !before.length);
+    this.$.allc.classList.toggle("hidden", !this._config.history_path);
   }
 
   _renderPills(canPick) {
@@ -1040,6 +1159,111 @@ class FilippaCard extends HTMLElement {
     if (!stoppable) this._sure = false;
     this.$.stop.classList.toggle("sure", !!this._sure);
     this.$.stop.textContent = this._sure ? t.stopSure : t.stop;
+    this._renderCycles();
+  }
+}
+
+const CYCLES_STYLE = `
+  :host { display: block; }
+  .wrap {
+    min-height: calc(100vh - var(--header-height, 56px));
+    box-sizing: border-box; padding: 16px;
+    display: flex; justify-content: center; align-items: flex-start;
+    background: var(--primary-background-color);
+    font-family: var(--paper-font-body1_-_font-family, system-ui, sans-serif);
+    color: var(--primary-text-color);
+  }
+  .page {
+    width: min(100%, 640px); box-sizing: border-box;
+    background: var(--card-background-color, #fff);
+    border-radius: 20px; padding: 16px 20px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+  }
+  h1 { font-size: 1.4em; font-weight: 600; margin: 0; }
+  .count, .note { font-size: 0.85em; opacity: 0.7; margin-top: 2px; }
+  .note { padding: 16px 2px; }
+  .note:empty { display: none; }
+  ${CYCLE_STYLE}
+`;
+
+// The history page: every cycle Filippa keeps, newest first, by month.
+class FilippaCyclesCard extends HTMLElement {
+  setConfig(config) {
+    if (!config || !config.device_id) throw new Error("filippa-cycles-card: device_id required");
+    this._config = config;
+    this._built = false;
+  }
+
+  getCardSize() {
+    return 12;
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    const locale = hass.locale || { language: hass.language };
+    const key = `${locale.language}|${locale.time_format}`;
+    if (key !== this._localeKey) {
+      this._localeKey = key;
+      this.t = textsFor(locale.language);
+      this._formats = formats(locale);
+      this._built = false;
+    }
+    if (!this._built) {
+      this._build();
+      this._render();
+    }
+    // Read again whenever the cycles sensor moves: a cycle has ended.
+    const id = (this._config.entities || {}).cycles;
+    const sensor = id ? hass.states[id] : undefined;
+    const stamp = sensor ? `${sensor.state}|${sensor.last_updated}` : "";
+    if (stamp !== this._stamp) {
+      this._stamp = stamp;
+      this._load();
+    }
+  }
+
+  _build() {
+    const root = this.shadowRoot || this.attachShadow({ mode: "open" });
+    root.innerHTML = `
+      <style>${CYCLES_STYLE}</style>
+      <div class="wrap"><div class="page">
+        <h1></h1><div class="count"></div><div class="note"></div><div class="list"></div>
+      </div></div>`;
+    const $ = (sel) => root.querySelector(sel);
+    this.$ = { title: $("h1"), count: $(".count"), note: $(".note"), list: $(".list") };
+    this._built = true;
+  }
+
+  _load() {
+    const asked = (this._asked = (this._asked || 0) + 1);
+    Promise.resolve(this._hass.callWS({ type: "filippa/cycles", device_id: this._config.device_id }))
+      .then((reply) => {
+        if (asked !== this._asked) return;
+        this._cycles = reply.cycles || [];
+        this._failed = false;
+        this._render();
+      }, () => {
+        if (asked !== this._asked) return;
+        this._failed = true;
+        this._render();
+      });
+  }
+
+  _render() {
+    const t = this.t;
+    const cycles = this._cycles;
+    this.$.title.textContent = t.cyclesOf(this._config.name || "Filippa");
+    this.$.count.textContent = cycles ? t.cycleCount(cycles.length) : "";
+    this.$.note.textContent = this._failed && !cycles ? t.loadFailed
+      : !cycles ? t.loading : cycles.length ? "" : t.noCycles;
+    const nodes = [];
+    let month;
+    for (const c of cycles || []) {
+      const name = capital(this._formats.month.format(new Date(c.started)));
+      if (name !== month) nodes.push(el("div", "month", (month = name)));
+      nodes.push(cycleNode(c, t, this._formats));
+    }
+    this.$.list.replaceChildren(...nodes);
   }
 }
 
@@ -1049,10 +1273,16 @@ class FilippaCard extends HTMLElement {
 // Define again, wherever window.customElements points, once the app is up.
 const define = () => {
   if (!customElements.get("filippa-card")) customElements.define("filippa-card", FilippaCard);
+  if (!customElements.get("filippa-cycles-card")) {
+    customElements.define("filippa-cycles-card", FilippaCyclesCard);
+  }
 };
 define();
 customElements.whenDefined("home-assistant").then(define);
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "filippa-card", name: "Filippa", description: textsFor(navigator.language).description,
+}, {
+  type: "filippa-cycles-card", name: "Filippa: cycles",
+  description: textsFor(navigator.language).allCycles,
 });

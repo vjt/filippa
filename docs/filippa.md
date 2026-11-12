@@ -27,22 +27,40 @@ only that: no requirements, `dependencies: [frontend, home_connect]`.
     than the start.
   - A cycle already running when Filippa first sees it has no start: it
     counts, but its duration is not kept.
+  - The operation state turning `unavailable` mid-cycle, then anything
+    other than a running state: the end was not seen, the outcome is
+    `unknown` (a use, no duration).
   - Stats keep, per program, the estimate, real duration and options of its
     last finished cycle, all from that one cycle.
+  - The log keeps the cycles seen whole: a start, an end seen as it
+    happened, at least a minute between them (the machine flickers run,
+    ready, run as a program starts: those are not washes). The last 365
+    days, 1000 at most, deduplicated by their end (one second apart at
+    most: the recorder gives timestamps back a microsecond off).
 - `__init__.py`: one `Dishwasher` per entry. It subscribes to the state
   changes first, reads the recorder since its cursor (the time of the last
-  state it took in; the first time 30 days back), feeds both in time order
-  (stably, so an entity's states keep their order) and then follows live.
-  Tracker, stats and cursor are kept in `.storage/filippa.cycles`.
+  state it took in), feeds both in time order (stably, so an entity's
+  states keep their order) and then follows live. With an empty log (the
+  first time, or after the update to 0.3) it reads a year back instead and
+  replays it with a tracker of its own, into the log only: the stats count
+  only what comes after the cursor, as before, and a cycle both replayed
+  and fed is logged once. A window that opens mid-cycle leaves that cycle
+  out (no start). Tracker, stats, log and cursor are kept in
+  `.storage/filippa.cycles`. The `filippa/cycles` websocket command returns
+  a dishwasher's log, newest first.
 - `sensor.py`: `sensor.<name>_cicli`, linked to the home_connect device with
   `device_entry`. In 2026.9 a `device_info` with home_connect's identifier
-  would make a second device owned by Filippa.
+  would make a second device owned by Filippa. `recent` (the last six
+  cycles of the log) is left out of the recorder.
 - `dashboard.py`: Peppina's approach, a storage-mode Lovelace panel rewritten
   on every load. Roles and option switches follow the registry; roles and
-  card options added by hand survive.
-- `www/filippa-card.js`: the card. All its texts sit in one table per
-  language (`STRINGS.it`, `STRINGS.en`), picked from the user's profile:
-  Italian for Italian, English for any other.
+  card options added by hand survive. Each dishwasher also gets a subview
+  (no tab, a back arrow) with `custom:filippa-cycles-card`, the history
+  page; the main card links to it through `history_path`.
+- `www/filippa-card.js`: the card, and the history page's card. All
+  their texts sit in one table per language (`STRINGS.it`, `STRINGS.en`),
+  picked from the user's profile: Italian for Italian, English for any
+  other.
 
 ## Verified
 
@@ -61,6 +79,16 @@ only that: no requirements, `dependencies: [frontend, home_connect]`.
   the fallback for other languages, a change of language in the profile)
   and 3 more in Home Assistant 2026.10.4 (the sensor's name in English,
   Italian and a language Filippa lacks).
+- 0.3.0, cycle history: tests of the tracker's unseen ends and of the log
+  (order, what it leaves out, once per cycle, a year and a thousand at
+  most), of the log rebuilt from ten days of a real dishwasher's recorder
+  history (anonymised: parts instead of entity ids, every timestamp moved
+  by one offset; `tests/fixtures/history.json`), in Home Assistant 2026.2.3
+  (`recent`, the websocket command, the subview, a year back, an update
+  rebuilding the log without counting twice, again and again), and of both
+  cards in jsdom. Replayed over the real recorder (43 days at the time),
+  the tracker closes the same 43 cycles the live stats counted; the log
+  keeps 40 of them, leaving out three start flickers.
 - The SVG drawn with rsvg-convert, still frames only.
 - The service, entity keys and option fields read from the Home Assistant
   2026.9.4 sources and aiohomeconnect 0.39.1.

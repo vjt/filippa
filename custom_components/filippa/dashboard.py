@@ -1,4 +1,5 @@
-"""Sidebar dashboard: one full-page dishwasher card per dishwasher.
+"""Sidebar dashboard: one full-page dishwasher card per dishwasher, and a
+subview per dishwasher listing every cycle kept, which its card links to.
 
 Same approach as Peppina's: register a storage-mode Lovelace panel and
 rewrite its config on every load from what the entity registry holds. It
@@ -26,9 +27,11 @@ ICON = "mdi:dishwasher"
 CARD_URL = "/filippa/filippa-card.js"
 CARD_FILE = Path(__file__).parent / "www" / "filippa-card.js"
 CARD_TYPE = "custom:filippa-card"
+CYCLES_CARD_TYPE = "custom:filippa-cycles-card"
+HISTORY_ICON = "mdi:history"
 
 # Card keys Filippa writes; anything else on the card is the user's.
-OWN_KEYS = ("type", "name", "device_id", "entities", "switches")
+OWN_KEYS = ("type", "name", "device_id", "entities", "switches", "history_path")
 # Roles Filippa fills in; any other role on the card is the user's.
 ROLES = {*PARTS.values(), "cycles"}
 
@@ -110,15 +113,17 @@ async def _save(hass: HomeAssistant, dishwashers: list) -> None:
         )
         lovelace.dashboards[URL] = storage
 
-    views = []
+    views, histories = [], []
     kept = await _added_by_hand(storage)
     for dishwasher in dishwashers:
         extra, options = kept.get(dishwasher.name, ({}, {}))
         entities = {**extra, **card_entities(hass, dishwasher)}
+        path = "default" if not views else dishwasher.ha_id.lower()
+        history = "cycles" if not views else f"{path}-cycles"
         views.append(
             {
                 "title": dishwasher.name,
-                "path": "default" if not views else dishwasher.ha_id.lower(),
+                "path": path,
                 "icon": ICON,
                 "type": "panel",
                 "cards": [
@@ -129,9 +134,29 @@ async def _save(hass: HomeAssistant, dishwashers: list) -> None:
                         "device_id": dishwasher.device_id,
                         "entities": entities,
                         "switches": dict(dishwasher.switches),
+                        "history_path": f"/{URL}/{history}",
+                    }
+                ],
+            }
+        )
+        # A subview: no tab of its own, a back arrow to the dishwasher.
+        histories.append(
+            {
+                "title": dishwasher.name,
+                "path": history,
+                "icon": HISTORY_ICON,
+                "type": "panel",
+                "subview": True,
+                "back_path": f"/{URL}/{path}",
+                "cards": [
+                    {
+                        "type": CYCLES_CARD_TYPE,
+                        "name": dishwasher.name,
+                        "device_id": dishwasher.device_id,
+                        "entities": {k: v for k, v in entities.items() if k == "cycles"},
                     }
                 ],
             }
         )
 
-    await storage.async_save({"views": views})
+    await storage.async_save({"views": views + histories})

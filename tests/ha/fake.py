@@ -40,6 +40,14 @@ async def setup_entry(hass, device_id):
     return entry
 
 
+def flicker(hass, freezer):
+    """What the machine may say as a program starts: run, ready, for a second."""
+    freezer.tick(timedelta(minutes=1))
+    hass.states.async_set(STATE, "run")
+    freezer.tick(timedelta(seconds=2))
+    hass.states.async_set(STATE, "ready")
+
+
 def cycle(hass, freezer, program, minutes, estimate, vario=False):
     """A whole cycle as home_connect reports it, a minute from now."""
     freezer.tick(timedelta(minutes=1))

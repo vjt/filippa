@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from machine.cycles import CycleTracker, Stats
+from machine.cycles import CycleLog, CycleTracker, Stats, cycles_in
 
 T0 = datetime(2026, 10, 11, 14, 31, tzinfo=timezone.utc)
 AUTO = "dishcare_dishwasher_program_auto_2"
@@ -161,6 +161,45 @@ def test_options_are_those_of_the_running_program(ready):
     assert closed[0]["options"] == [HALF, VARIO]
 
 
+def test_a_cycle_that_ends_out_of_sight_has_an_unknown_outcome(ready):
+    """Out of reach, then ready: finished or stopped, and when, nobody saw."""
+    closed = feed(
+        ready,
+        (0, "state", "run"),
+        (0, "active", ECO),
+        (0, "finish", iso(230)),
+        (100, "state", "unavailable"),
+        (400, "state", "ready"),
+    )
+    assert [(c["outcome"], c["actual"], c["ended"]) for c in closed] == [("unknown", None, iso(400))]
+
+
+def test_a_finish_seen_only_after_a_blackout_teaches_no_duration(ready):
+    closed = feed(
+        ready,
+        (0, "state", "run"),
+        (0, "active", ECO),
+        (100, "state", "unavailable"),
+        (101, "state", "unknown"),
+        (400, "state", "finished"),
+    )
+    assert [(c["outcome"], c["actual"]) for c in closed] == [("unknown", None)]
+
+
+def test_a_cycle_seen_running_again_after_a_blackout_ends_as_usual(ready):
+    closed = feed(
+        ready,
+        (0, "state", "run"),
+        (0, "active", ECO),
+        (100, "state", "unavailable"),
+        (130, "state", "run"),
+        (230, "state", "finished"),
+        (300, "state", "run"),
+        (310, "state", "ready"),
+    )
+    assert [(c["outcome"], c["actual"]) for c in closed] == [("finished", 230), ("interrupted", None)]
+
+
 def test_the_tracker_survives_a_round_trip_through_storage(ready):
     feed(ready, (0, "state", "run"), (0, "active", ECO), (0, "finish", iso(230)))
     again = CycleTracker(ready.as_dict())
@@ -211,3 +250,82 @@ def test_stats_survive_a_round_trip_through_storage():
     again = Stats(stats.as_dict())
     assert again.programs() == stats.programs()
     assert again.total == 1 and again.last == stats.last
+
+
+def test_an_unknown_outcome_counts_but_teaches_no_duration():
+    stats = Stats()
+    stats.add(cycle(AUTO, estimate=150, actual=152, ended=0))
+    stats.add({**cycle(AUTO, ended=1000), "outcome": "unknown", "actual": None})
+    assert stats.programs()[AUTO] == {"usage": 2, "estimate": 150, "actual": 152, "options": []}
+
+
+# The log: every cycle seen whole, for the history page.
+
+NOW = at(10_000)
+
+
+def logged(*cycles, now=NOW):
+    log = CycleLog()
+    for c in cycles:
+        log.add(c, now)
+    return log
+
+
+def test_the_log_keeps_cycles_oldest_first_and_gives_them_newest_first():
+    log = logged(cycle(AUTO, ended=1000), cycle(ECO, ended=3000), cycle(AUTO, ended=2000))
+    assert [c["ended"] for c in log.cycles] == [iso(1000), iso(2000), iso(3000)]
+    assert [c["ended"] for c in log.newest()] == [iso(3000), iso(2000), iso(1000)]
+    assert [c["ended"] for c in log.newest(2)] == [iso(3000), iso(2000)]
+
+
+def test_the_log_keeps_interrupted_cycles():
+    log = logged(cycle(ECO, outcome="interrupted", actual=None, ended=1000))
+    assert [c["outcome"] for c in log.cycles] == ["interrupted"]
+
+
+def test_the_log_leaves_out_what_was_not_seen_whole():
+    unknown = {**cycle(AUTO, ended=1000), "outcome": "unknown", "actual": None}
+    joined = {**cycle(AUTO, ended=2000), "started": None, "actual": None}
+    # The machine flickers run, ready, run when a program starts.
+    flicker = {**cycle(ECO, outcome="interrupted", ended=3000), "started": iso(3000)}
+    assert logged(unknown, joined, flicker).cycles == []
+
+
+def test_the_log_keeps_a_cycle_once():
+    again = cycle(AUTO, ended=1000)
+    # From the recorder, a timestamp may come back a microsecond off.
+    nudged = {**again, "ended": (at(1000) + timedelta(microseconds=1)).isoformat()}
+    log = logged(cycle(AUTO, ended=1000), again, nudged, cycle(ECO, ended=1001))
+    assert [c["ended"] for c in log.cycles] == [iso(1000), iso(1001)]
+
+
+def test_the_log_keeps_a_year_at_most():
+    year = timedelta(days=365) / timedelta(minutes=1)
+    log = logged(cycle(AUTO, ended=0), cycle(ECO, ended=1000), now=at(year + 500))
+    assert [c["program"] for c in log.cycles] == [ECO]
+    log.trim(at(year + 2000))
+    assert log.cycles == []
+
+
+def test_the_log_keeps_a_thousand_cycles_at_most():
+    log = logged(*(cycle(AUTO, ended=-200 * n) for n in range(1005)))
+    assert len(log.cycles) == 1000
+    assert log.cycles[0]["ended"] == iso(-200 * 999)
+    assert log.cycles[-1]["ended"] == iso(0)
+
+
+def test_the_log_survives_a_round_trip_through_storage():
+    log = logged(cycle(AUTO, ended=1000), cycle(ECO, ended=2000))
+    assert CycleLog(log.as_list()).cycles == log.cycles
+
+
+def test_cycles_in_replays_states_with_a_tracker_of_its_own(ready):
+    states = [
+        (at(-60), "state", "ready"),
+        (at(0), "state", "run"),
+        (at(0), "active", ECO),
+        (at(230), "state", "finished"),
+        (at(300), "state", "run"),
+    ]
+    assert [(c["program"], c["actual"]) for c in cycles_in(states)] == [(ECO, 230)]
+    # The cycle still running is not one of them.
